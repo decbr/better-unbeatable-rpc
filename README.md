@@ -1,6 +1,7 @@
 # better-unbeatable-rpc
 
-Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux. It works with **Vesktop alone**, so you don't need the official Discord client.
+Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux. \
+Not windows at the moment. Sorry! I don't have a windows machine i can test with.
 
 | Where you are | Top line | Second line |
 |---|---|---|
@@ -10,7 +11,7 @@ Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/224062
 | Story mode | **Story mode - Chapter 4** | ★ 8.703 |
 | Menus | **In menus** | ★ 8.703 (your star rating / player rank) |
 
-"UNBEATABLE" on the second line is the difficulty: the game's charts go Beginner, Easy, Normal, Hard, UNBEATABLE and Star. Your status clears when the game closes.
+"UNBEATABLE" on the second line is the difficulty: the game's charts go Beginner, Easy, Normal, Hard, UNBEATABLE and Star.
 
 The PB shown is the one for the board you're playing on. The game keeps separate high scores for normal speed ("Classic"), Double Time and Half Time.
 
@@ -31,7 +32,7 @@ The plugin also switches off the game's own Discord integration. That integratio
 ## Requirements
 
 - UNBEATABLE (Steam, Windows build running under Proton).
-- [Vesktop](https://github.com/Vencord/Vesktop) with **arRPC** enabled. The official Discord client works too.
+- [Vesktop](https://github.com/Vencord/Vesktop) with **arRPC** enabled, or the official Discord client.
 - To build: Go 1.23+, the .NET SDK (8 or newer), `make`.
 - [BepInEx 5.4.23.5](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) (`BepInEx_win_x64_5.4.23.5.zip`). It needs 5.4.23.5 or newer for Unity 6.
 
@@ -53,7 +54,7 @@ The plugin also switches off the game's own Discord integration. That integratio
    ```
    WINEDLLOVERRIDES="winhttp=n,b" ~/.local/bin/unbeatable-launch.sh %command%
    ```
-   Other wrappers go after the script, for example:
+   Other wrappers go after the script, for example for gamemoderun:
    ```
    WINEDLLOVERRIDES="winhttp=n,b" ~/.local/bin/unbeatable-launch.sh gamemoderun %command%
    ```
@@ -101,12 +102,10 @@ make test
   - `cannot reach Discord` means no socket was found; see below.
 - No `game is running` line means the plugin isn't sending. Check `BepInEx/LogOutput.log` for `UnbeatableRPC … loaded`. If BepInEx itself isn't there, the `WINEDLLOVERRIDES` part of the launch options is missing.
 
-**Another app's status wins** (e.g. the JetBrains Discord plugin)
+**Another app's status shows up in Discord**
 - Vesktop's arRPC passes every connected app's activity to Discord, and Discord then shows only one "Playing" activity. The daemon can't take priority over, or remove, another app's activity.
-- Fixes:
-  - Turn off the other app's presence while you play.
-  - In the JetBrains Discord plugin's settings, set it to hide when the IDE has been idle for a while. Your editor is idle while you're playing, so it steps aside on its own.
-
+- The fix would be to turn off the other app's presence (or simply close the culprit) while you play. This is a limitation of all of discord.
+- 
 **Flatpak Vesktop**
 - The socket lives at `$XDG_RUNTIME_DIR/.flatpak/dev.vencord.Vesktop/xdg-run/discord-ipc-0`. The daemon checks there automatically.
 - If yours is somewhere else, pass `--socket /path/to/discord-ipc-0`. Find it with `ss -xlp | grep discord-ipc`.
@@ -134,7 +133,6 @@ None of the game's own files are modified, so nothing needs restoring.
   - `internal/discordipc`: the socket protocol;
   - `internal/presence`: state → activity, and the update loop;
   - `cmd/fakegame`: the test sender.
-- `decompiled/` (gitignored) is for local ilspycmd output. Never commit game code or DLLs.
 
 Wire format, plugin → daemon (UDP, one JSON object per datagram; unknown fields are omitted):
 
@@ -142,3 +140,7 @@ Wire format, plugin → daemon (UDP, one JSON object per datagram; unknown field
 {"v":1,"state":"idle|arcade|story|results|closed","song":"…","artist":"…","difficulty":"…","level":20,
  "chapter":"Chapter 4","highScore":1155577,"accuracy":0.842,"rank":"B","stars":8.703,"paused":false,"startedAt":1790860862}
 ```
+
+---
+
+Unofficial fan project, not affiliated with D-CELL GAMES. UNBEATABLE is a trademark of its owners :)

@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <GameDir>$(HOME)/.local/share/Steam/steamapps/common/UNBEATABLE</GameDir>
+  </PropertyGroup>
+</Project>

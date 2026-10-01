@@ -1,0 +1,11 @@
+[Unit]
+Description=Discord Rich Presence for UNBEATABLE
+Documentation=https://github.com/decbr/better-unbeatable-rpc
+
+[Service]
+ExecStart=%h/.local/bin/unbeatable-rpc
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

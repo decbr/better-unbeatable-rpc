@@ -20,10 +20,10 @@ func Format(s State, o Options) *discordipc.Activity {
 	switch s.State {
 	case StateArcade:
 		a.Details = songLine(s)
-		a.State = pbLine(s)
+		a.State = chartLine(s)
 	case StateResults:
 		a.Details = "Results: " + songLine(s)
-		a.State = pbLine(s)
+		a.State = chartLine(s)
 	case StateStory:
 		a.Details = "Story mode"
 		if s.Chapter != "" {
@@ -49,9 +49,6 @@ func Format(s State, o Options) *discordipc.Activity {
 
 	if o.LargeImage != "" {
 		a.Assets = &discordipc.Assets{LargeImage: o.LargeImage, LargeText: o.LargeText}
-		if (s.State == StateArcade || s.State == StateResults) && s.Artist != "" {
-			a.Assets.LargeText = fitField(s.Artist)
-		}
 	}
 	return a
 }
@@ -61,17 +58,25 @@ func songLine(s State) string {
 	if song == "" {
 		song = "Unknown song"
 	}
-	var diff []string
-	if s.Difficulty != "" {
-		diff = append(diff, s.Difficulty)
-	}
-	if s.Level != nil && *s.Level > 0 {
-		diff = append(diff, fmt.Sprintf("Lv %d", *s.Level))
-	}
-	if len(diff) == 0 {
+	if s.Artist == "" {
 		return song
 	}
-	return song + " [" + strings.Join(diff, " ") + "]"
+	return song + " - " + s.Artist
+}
+
+func chartLine(s State) string {
+	var parts []string
+	if s.Difficulty != "" {
+		parts = append(parts, s.Difficulty)
+	}
+	if s.Level != nil && *s.Level > 0 {
+		parts = append(parts, fmt.Sprintf("Lv %d", *s.Level))
+	}
+	chart := strings.Join(parts, " ")
+	if chart == "" {
+		return pbLine(s)
+	}
+	return chart + " · " + pbLine(s)
 }
 
 func starsLine(s State) string {

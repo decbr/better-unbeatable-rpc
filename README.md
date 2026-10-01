@@ -2,15 +2,15 @@
 
 Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux. It works with **Vesktop alone**, so you don't need the official Discord client.
 
-| Where you are | Status |
-|---|---|
-| Arcade song | **RE-TUNED [UNBEATABLE Lv 20]** · PB: 1,155,577 (B) · elapsed timer |
-| Paused | **RE-TUNED [UNBEATABLE Lv 20] (paused)** · timer hidden |
-| Results | **Results: RE-TUNED [UNBEATABLE Lv 20]** · PB, updated if you just beat it |
-| Story mode | **Story mode - Chapter 4** · ★ 8.703 |
-| Menus | **In menus** · ★ 8.703 (your star rating / player rank) |
+| Where you are | Top line | Second line |
+|---|---|---|
+| Arcade song | **RE-TUNED - peak divide ft. Rachel Lake** + elapsed timer | UNBEATABLE Lv 20 · PB: 1,155,577 (B) |
+| Paused | **RE-TUNED - peak divide ft. Rachel Lake (paused)** | same, timer hidden |
+| Results | **Results: RE-TUNED - peak divide ft. Rachel Lake** | same, PB updated if you just beat it |
+| Story mode | **Story mode - Chapter 4** | ★ 8.703 |
+| Menus | **In menus** | ★ 8.703 (your star rating / player rank) |
 
-Your status clears when the game closes. Hovering over the image during a song shows the artist.
+"UNBEATABLE" on the second line is the difficulty: the game's charts go Beginner, Easy, Normal, Hard, UNBEATABLE and Star. Your status clears when the game closes.
 
 The PB shown is the one for the board you're playing on. The game keeps separate high scores for normal speed ("Classic"), Double Time and Half Time.
 

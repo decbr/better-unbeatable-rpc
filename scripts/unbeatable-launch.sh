@@ -12,7 +12,9 @@ mkdir -p "$log_dir"
 [[ -f "$log_file" ]] && mv -f "$log_file" "$log_file.old"
 
 daemon_pid=""
-if [[ -n "$daemon" ]]; then
+if systemctl --user is-active --quiet unbeatable-rpc.service 2>/dev/null; then
+    echo "unbeatable-launch: unbeatable-rpc.service is running; not starting another daemon" >>"$log_file"
+elif [[ -n "$daemon" ]]; then
     # shellcheck disable=SC2086 # word splitting of extra args is intended
     env -u LD_PRELOAD "$daemon" ${UNBEATABLE_RPC_ARGS:-} >>"$log_file" 2>&1 &
     daemon_pid=$!

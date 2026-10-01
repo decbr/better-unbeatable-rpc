@@ -1,37 +1,42 @@
-BINDIR    ?= $(HOME)/.local/bin
-GAME_DIR  ?= $(HOME)/.local/share/Steam/steamapps/common/UNBEATABLE
-PLUGIN_DIR = $(GAME_DIR)/BepInEx/plugins/UnbeatableRPC
+VERSION  ?= 0.1.0
+GAME_DIR ?= $(HOME)/.local/share/Steam/steamapps/common/UNBEATABLE
 
 GO     ?= go
 DOTNET ?= dotnet
 
-.PHONY: all plugin daemon test install uninstall clean
+NAME        = better-unbeatable-rpc-$(VERSION)-linux-x86_64
+RELEASE_DIR = dist/$(NAME)
+PLUGIN_DLL  = plugin/bin/Release/UnbeatableRPC.dll
+
+.PHONY: all plugin daemon test release install uninstall clean
 
 all: daemon plugin
 
 plugin:
-	$(DOTNET) build plugin/UnbeatableRPC.csproj -c Release -p:GameDir="$(GAME_DIR)"
+	$(DOTNET) build plugin/UnbeatableRPC.csproj -c Release -p:GameDir="$(GAME_DIR)" -p:Version=$(VERSION)
 
 daemon:
-	$(GO) build -trimpath -o bin/unbeatable-rpc ./daemon/cmd/unbeatable-rpc
-	$(GO) build -trimpath -o bin/fakegame ./daemon/cmd/fakegame
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags="-s -w" -o bin/unbeatable-rpc ./daemon/cmd/unbeatable-rpc
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags="-s -w" -o bin/fakegame ./daemon/cmd/fakegame
 
 test:
 	$(GO) vet ./...
 	$(GO) test -race ./...
 
-install: daemon plugin
-	install -Dm755 bin/unbeatable-rpc "$(BINDIR)/unbeatable-rpc"
-	install -Dm755 scripts/unbeatable-launch.sh "$(BINDIR)/unbeatable-launch.sh"
-	@echo
-	@echo "Installed. Steam launch options:"
-	@echo '  WINEDLLOVERRIDES="winhttp=n,b" $(BINDIR)/unbeatable-launch.sh %command%'
+release: daemon plugin
+	rm -rf "$(RELEASE_DIR)"
+	install -Dm755 bin/unbeatable-rpc "$(RELEASE_DIR)/unbeatable-rpc"
+	install -Dm644 "$(PLUGIN_DLL)" "$(RELEASE_DIR)/UnbeatableRPC.dll"
+	install -Dm755 scripts/install.sh scripts/uninstall.sh scripts/unbeatable-launch.sh -t "$(RELEASE_DIR)"
+	install -Dm644 scripts/unbeatable-rpc.service README.md -t "$(RELEASE_DIR)"
+	tar -C dist -czf "dist/$(NAME).tar.gz" "$(NAME)"
+	@echo "Built dist/$(NAME).tar.gz"
+
+install: release
+	"$(RELEASE_DIR)/install.sh" $(INSTALL_ARGS)
 
 uninstall:
-	rm -f "$(BINDIR)/unbeatable-rpc" "$(BINDIR)/unbeatable-launch.sh"
-	rm -rf "$(PLUGIN_DIR)"
-	@echo "Removed the daemon, launch script and plugin. BepInEx is still in $(GAME_DIR);"
-	@echo "see README.md to remove it too."
+	scripts/uninstall.sh $(UNINSTALL_ARGS)
 
 clean:
-	rm -rf bin plugin/bin plugin/obj
+	rm -rf bin dist plugin/bin plugin/obj

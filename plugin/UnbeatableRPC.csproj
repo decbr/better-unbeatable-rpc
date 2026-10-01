@@ -17,7 +17,6 @@
   <PropertyGroup>
     <ManagedDir>$(GameDir)/UNBEATABLE_Data/Managed</ManagedDir>
     <BepInExCoreDir>$(GameDir)/BepInEx/core</BepInExCoreDir>
-    <OutputPath Condition="'$(Configuration)' == 'Release'">$(GameDir)/BepInEx/plugins/UnbeatableRPC/</OutputPath>
   </PropertyGroup>
 
   <Target Name="CheckGameDir" BeforeTargets="ResolveAssemblyReferences">

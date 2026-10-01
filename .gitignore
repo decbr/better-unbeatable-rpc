@@ -1,0 +1,6 @@
+decompiled/
+Directory.Build.props
+bin/
+obj/
+.idea/
+notes/

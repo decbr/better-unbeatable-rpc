@@ -1,7 +1,7 @@
 # better-unbeatable-rpc
 
 Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux. \
-Not windows at the moment. Sorry! I don't have a windows machine i can test with.
+Not windows at the moment. Sorry! I don't have a Windows machine i can test with.
 
 | Where you are | Top line | Second line |
 |---|---|---|
@@ -31,35 +31,49 @@ The plugin also switches off the game's own Discord integration. That integratio
 
 ## Requirements
 
-- UNBEATABLE (Steam, Windows build running under Proton).
+- UNBEATABLE on Steam, running under Proton.
 - [Vesktop](https://github.com/Vencord/Vesktop) with **arRPC** enabled, or the official Discord client.
-- To build: Go 1.23+, the .NET SDK (8 or newer), `make`.
-- [BepInEx 5.4.23.5](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) (`BepInEx_win_x64_5.4.23.5.zip`). It needs 5.4.23.5 or newer for Unity 6.
 
 ## Install
 
-1. **BepInEx:** extract the BepInEx zip into the game folder, so that `winhttp.dll` sits next to `UNBEATABLE.exe`. The game folder is usually `~/.local/share/Steam/steamapps/common/UNBEATABLE`.
-2. **Optional, for building with plain `dotnet build` or an IDE:**
+1. Download `better-unbeatable-rpc-<version>-linux-x86_64.tar.gz` from the [releases](https://github.com/decbr/better-unbeatable-rpc/releases) and extract it.
+2. Quit the game, then run the installer:
    ```bash
-   cp plugin/Directory.Build.props.example plugin/Directory.Build.props
-   # edit GameDir in it if your game isn't in the default Steam library
+   cd better-unbeatable-rpc-*-linux-x86_64
+   ./install.sh
    ```
-   The Makefile passes the game folder itself, so `make` doesn't need this.
-3. **Build and install:**
-   ```bash
-   make install    # daemon + launch script -> ~/.local/bin, plugin -> the game's BepInEx/plugins/
-   ```
-   If the game is in another Steam library, add `GAME_DIR=/path/to/UNBEATABLE`.
-4. **Steam launch options** (right-click UNBEATABLE → Properties → General):
-   ```
-   WINEDLLOVERRIDES="winhttp=n,b" ~/.local/bin/unbeatable-launch.sh %command%
-   ```
-   Other wrappers go after the script, for example for gamemoderun:
-   ```
-   WINEDLLOVERRIDES="winhttp=n,b" ~/.local/bin/unbeatable-launch.sh gamemoderun %command%
-   ```
+3. Launch UNBEATABLE.
 
-The launch script starts the daemon, runs the game, and stops the daemon when the game exits. The daemon log is `~/.local/state/unbeatable-rpc/daemon.log`, and the previous run's log is `daemon.log.old`.
+The installer:
+- finds the game in any of your Steam libraries (Flatpak Steam included);
+- downloads [BepInEx 5.4.23.5](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) and checks its checksum (it skips this if BepInEx is already installed);
+- puts the plugin in the game's `BepInEx/plugins/`, and the daemon in `~/.local/bin`, as a systemd user service that starts when you log in. The daemon sits idle until the game is running.
+- asks whether to store BepInEx's DLL override in the game's Proton prefix. If you say yes, **no Steam launch options are needed**, and any you already have (e.g. `gamemoderun %command%`) keep working.
+
+If you say no, or the prefix can't be used, the installer prints the launch options to set instead:
+```
+WINEDLLOVERRIDES="winhttp=n,b" %command%
+```
+The prefix setting is lost if the prefix is deleted (e.g. Steam's *delete local content*). Re-run `./install.sh` to put it back. Re-running is always safe.
+
+| Option | |
+|---|---|
+| `--launch-options` | Never touch the Proton prefix; always use launch options. |
+| `--no-service` | No systemd service. The daemon is started by `~/.local/bin/unbeatable-launch.sh`, which then goes in the launch options. |
+| `--game-dir DIR` | Use this game folder instead of searching. |
+| `--bepinex-zip FILE` | Use an already-downloaded `BepInEx_win_x64_5.4.23.5.zip`. |
+| `-y` | Don't ask; say yes. |
+
+### From source
+
+Needs Go 1.23+, the .NET SDK (8 or newer) and `make`. The game must be installed too: the plugin compiles against its DLLs.
+
+```bash
+make release    # dist/better-unbeatable-rpc-<version>-linux-x86_64.tar.gz
+make install    # builds the release, then runs its install.sh
+```
+
+Add `GAME_DIR=/path/to/UNBEATABLE` if the game isn't in the default Steam library. To build the plugin with plain `dotnet build` or an IDE, copy `plugin/Directory.Build.props.example` to `plugin/Directory.Build.props` and set `GameDir` in it.
 
 ## Configuration
 
@@ -72,7 +86,13 @@ The launch script starts the daemon, runs the game, and stops the daemon when th
 | `DebugLogging` | `false` | Log scenes and every message to `BepInEx/LogOutput.log`. |
 | `LastKnownStars` | (managed) | The last star rating seen, so the menus can show it before the game recalculates it. |
 
-**Daemon:** flags, or environment variables. In the launch script, put extra flags in `UNBEATABLE_RPC_ARGS`, e.g. `UNBEATABLE_RPC_ARGS="--verbose"` in the launch options.
+**Daemon:** flags or environment variables.
+- With the service, add them with `systemctl --user edit unbeatable-rpc`, for example:
+  ```ini
+  [Service]
+  Environment=UNBEATABLE_RPC_VERBOSE=1
+  ```
+- With the launch wrapper, put flags in `UNBEATABLE_RPC_ARGS` in the launch options.
 
 | Flag | Env | Default |
 |---|---|---|
@@ -97,10 +117,11 @@ make test
 **Nothing shows up in Discord**
 - Check that Vesktop's arRPC is on: Vesktop Settings → *Rich Presence (arRPC)*.
 - Check that Discord's activity sharing is on: User Settings → Activity Privacy → *Share your detected activities with others*.
-- Look at `~/.local/state/unbeatable-rpc/daemon.log`:
+- Look at the daemon's log: `journalctl --user -u unbeatable-rpc` with the service, or `~/.local/state/unbeatable-rpc/daemon.log` with the launch wrapper.
   - `connected to …` and `activity set: …` mean the daemon side is fine.
   - `cannot reach Discord` means no socket was found; see below.
-- No `game is running` line means the plugin isn't sending. Check `BepInEx/LogOutput.log` for `UnbeatableRPC … loaded`. If BepInEx itself isn't there, the `WINEDLLOVERRIDES` part of the launch options is missing.
+- No `game is running` line means the plugin isn't sending. Check `<game>/BepInEx/LogOutput.log` for `UnbeatableRPC … loaded`.
+  - If that file doesn't exist, BepInEx isn't loading. Re-run `./install.sh`, or use the `WINEDLLOVERRIDES` launch option.
 
 **Another app's status shows up in Discord**
 - Vesktop's arRPC passes every connected app's activity to Discord, and Discord then shows only one "Playing" activity. The daemon can't take priority over, or remove, another app's activity.
@@ -117,14 +138,11 @@ make test
 ## Uninstall
 
 ```bash
-make uninstall   # removes ~/.local/bin/unbeatable-rpc, unbeatable-launch.sh and the plugin
+./uninstall.sh          # removes the plugin, the daemon and the service
+./uninstall.sh --all    # also removes BepInEx and restores the Proton prefix, if the installer added them
 ```
 
-Then, in the game folder:
-- To remove BepInEx: delete `winhttp.dll`, `doorstop_config.ini`, `.doorstop_version`, `changelog.txt` and the `BepInEx/` folder.
-- Set the Steam launch options back to empty, or just `gamemoderun %command%` or whatever you had before.
-
-None of the game's own files are modified, so nothing needs restoring.
+Then remove this mod's parts from UNBEATABLE's launch options, if you set any. None of the game's own files are modified, so nothing else needs restoring.
 
 ## Development
 
@@ -133,6 +151,7 @@ None of the game's own files are modified, so nothing needs restoring.
   - `internal/discordipc`: the socket protocol;
   - `internal/presence`: state → activity, and the update loop;
   - `cmd/fakegame`: the test sender.
+- `scripts/`: the installer (`install.sh`, which also uninstalls), the systemd unit, and the launch wrapper.
 
 Wire format, plugin → daemon (UDP, one JSON object per datagram; unknown fields are omitted):
 

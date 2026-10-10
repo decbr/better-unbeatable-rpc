@@ -5,11 +5,13 @@ Not Windows at the moment. Sorry! I don't have a Windows machine I can test with
 
 | Where you are | Top line | Second line |
 |---|---|---|
-| Arcade song | **RE-TUNED - peak divide ft. Rachel Lake** + elapsed timer | UNBEATABLE Lv 20 · PB: 1,155,577 (B) |
-| Paused | **RE-TUNED - peak divide ft. Rachel Lake (paused)** | same, timer hidden |
+| Arcade song | **RE-TUNED - peak divide ft. Rachel Lake** | UNBEATABLE Lv 20 · PB: 1,155,577 (B) |
+| Paused | **RE-TUNED - peak divide ft. Rachel Lake (paused)** | same |
 | Results | **Results: RE-TUNED - peak divide ft. Rachel Lake** | same, PB updated if you just beat it |
 | Story mode | **Story mode - Chapter 4** | ★ 8.703 |
 | Menus | **In menus** | ★ 8.703 (your star rating) |
+
+The timer shows how long the game has been open, in every state and every style.
 
 The PB is for the board you're playing on: Classic, Double Time or Half Time. Prefer something simpler? See [Styles](#styles).
 
@@ -29,6 +31,7 @@ A game under Proton can't reach a Linux Discord socket, so a BepInEx plugin send
 
 - UNBEATABLE on Steam, running under Proton.
 - [Vesktop](https://github.com/Vencord/Vesktop) with **arRPC** enabled, or the official Discord client.
+- For the settings app only: WebKitGTK 4.1 (`webkit2gtk-4.1` on Arch, `libwebkit2gtk-4.1-0` on Debian/Ubuntu).
 
 ## Install
 
@@ -44,6 +47,8 @@ The installer finds the game (Flatpak Steam included), installs [BepInEx 5](http
 ```
 WINEDLLOVERRIDES="winhttp=n,b" %command%
 ```
+At the end it offers to open the settings app; after that it's **UNBEATABLE RPC** in your app menu.
+
 Re-running `./install.sh` is always safe, e.g. after Steam's *delete local content* resets the prefix. Run `./install.sh --help` for options.
 
 ## Styles
@@ -52,16 +57,15 @@ Re-running `./install.sh` is always safe, e.g. after Steam's *delete local conte
 |---|---|---|---|
 | `detailed` (default) | the table at the top | | |
 | `spotify` | **RE-TUNED** / peak divide ft. Rachel Lake | **Story mode** / Chapter 4 | **In menus** / ★ 8.703 |
+| `osu` | **peak divide - RE-TUNED (charter) [UNBEATABLE]** / Doing crimes | **Story mode** / Chapter 4 | **In menus** / ★ 8.703 |
 
-To switch:
-```bash
-mkdir -p ~/.config/systemd/user/unbeatable-rpc.service.d
-printf '[Service]\nEnvironment=UNBEATABLE_RPC_STYLE=spotify\n' > ~/.config/systemd/user/unbeatable-rpc.service.d/override.conf
-systemctl --user daemon-reload && systemctl --user restart unbeatable-rpc
+To switch, open **UNBEATABLE RPC** from your app menu and pick one. It takes effect within a few seconds, no restart needed. The app also shows whether the game and Discord are detected, and what your status currently says.
+
+Without the app, edit `~/.config/unbeatable-rpc/config.json`:
+```json
+{"style": "spotify"}
 ```
-Delete that file and run the last line again to go back.
-
-Other daemon settings (`UNBEATABLE_RPC_SOCKET`, `UNBEATABLE_RPC_VERBOSE=1`) go in the same file. Run `~/.local/bin/unbeatable-rpc -h` for the full list.
+The other settings there are `largeImage`, `clientId`, `socket` and `verbose`. `UNBEATABLE_RPC_*` environment variables and command-line flags win over the file; run `~/.local/bin/unbeatable-rpc -h` for the list.
 
 ## Troubleshooting
 
@@ -70,7 +74,7 @@ Other daemon settings (`UNBEATABLE_RPC_SOCKET`, `UNBEATABLE_RPC_VERBOSE=1`) go i
 - Discord: User Settings → Activity Privacy → *Share your detected activities with others* must be on.
 - Check `journalctl --user -u unbeatable-rpc`:
   - `activity set: …`: the daemon is working.
-  - `cannot reach Discord`: no Discord socket found. Flatpak Vesktop is found automatically; otherwise set `UNBEATABLE_RPC_SOCKET` to the path from `ss -xlp | grep discord-ipc`.
+  - `cannot reach Discord`: no Discord socket found. Flatpak Vesktop is found automatically; otherwise set the socket path in the settings app (Advanced) to the one from `ss -xlp | grep discord-ipc`.
   - No `game is running`: the plugin isn't loading. Check `<game>/BepInEx/LogOutput.log` exists, and re-run `./install.sh` if not.
 
 **Another app's status shows instead:** Discord only shows one "Playing" activity. Close or disable the other app's presence while you play.
@@ -79,19 +83,21 @@ Other daemon settings (`UNBEATABLE_RPC_SOCKET`, `UNBEATABLE_RPC_VERBOSE=1`) go i
 
 ## Uninstall
 
+Open **UNBEATABLE RPC**, then Advanced → **Uninstall…**. Or from a terminal:
+
 ```bash
-./uninstall.sh          # removes the plugin, the daemon and the service
-./uninstall.sh --all    # also removes BepInEx and the Proton prefix change
+unbeatable-rpc-uninstall          # removes the plugin, the daemon, the settings app and your settings
+unbeatable-rpc-uninstall --all    # also removes BepInEx and the Proton prefix change
 ```
 
-Remove the launch options too, if you set any. None of the game's own files are modified.
+(`./uninstall.sh` in the release folder does the same.) Remove the launch options too, if you set any. None of the game's own files are modified.
 
 ## Building from source
 
-Needs Go 1.23+, the .NET SDK 8+, `make`, and the game installed (the plugin compiles against its DLLs).
+Needs Go 1.25+, the .NET SDK 8+, `make`, WebKitGTK 4.1 development files, and the game installed (the plugin compiles against its DLLs).
 
 ```bash
-make install    # or GAME_DIR=/path/to/UNBEATABLE make install
+make install    # or GAME_DIR=/path/to/UNBEATABLE make install; NO_GUI=1 skips the settings app
 ```
 
 ---

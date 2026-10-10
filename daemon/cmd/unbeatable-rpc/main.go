@@ -14,7 +14,7 @@ import (
 	"syscall"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc"
-	"github.com/decbr/better-unbeatable-rpc/daemon/internal/presence"
+	"github.com/decbr/better-unbeatable-rpc/daemon/presence"
 )
 
 const (

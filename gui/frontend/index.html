@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UNBEATABLE RPC</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main>
+    <section class="card" id="status">
+      <header>
+        <h2>Status</h2>
+      </header>
+      <div id="daemon-down" hidden>
+        <p>The daemon isn't running, so nothing is sent to Discord.</p>
+        <button id="start-daemon">Start daemon</button>
+        <p class="error" id="start-error" hidden></p>
+      </div>
+      <div id="daemon-up" hidden>
+        <dl class="facts">
+          <dt>Game</dt><dd id="game"></dd>
+          <dt>Discord</dt><dd id="discord"></dd>
+        </dl>
+        <div class="presence" id="presence">
+          <img class="presence-art" src="unbeatable.png" alt="">
+          <div class="presence-text">
+            <div class="presence-app">UNBEATABLE</div>
+            <div class="presence-line" id="p-details"></div>
+            <div class="presence-line" id="p-state"></div>
+            <div class="presence-timer" id="p-timer" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M7 6h10a5 5 0 0 1 5 5v2.5a3.5 3.5 0 0 1-6.3 2.1L14.5 14h-5l-1.2 1.6A3.5 3.5 0 0 1 2 13.5V11a5 5 0 0 1 5-5Zm0 3v1.5H5.5V12H7v1.5h1.5V12H10v-1.5H8.5V9H7Zm9.5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm-2 2.5a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/></svg>
+              <span id="p-timer-text"></span>
+            </div>
+          </div>
+        </div>
+        <p class="dim" id="presence-empty">Nothing shown in Discord right now.</p>
+        <p class="error" id="config-error" hidden></p>
+      </div>
+    </section>
+
+    <section class="card">
+      <header>
+        <h2>Style</h2>
+        <span class="saved" id="saved" hidden>Saved</span>
+      </header>
+      <p class="note" id="style-locked" hidden></p>
+      <div id="styles"></div>
+    </section>
+
+    <details class="card">
+      <summary><h2>Advanced</h2></summary>
+      <form id="advanced">
+        <label>Large image asset key
+          <input name="largeImage" placeholder="logo">
+        </label>
+        <label>Discord application ID
+          <input name="clientId" inputmode="numeric">
+        </label>
+        <label>Discord socket path
+          <input name="socket" placeholder="found automatically">
+        </label>
+        <label class="check">
+          <input type="checkbox" name="verbose"> Verbose logging
+        </label>
+      </form>
+      <p class="dim small">Settings file: <code id="config-path"></code></p>
+      <p class="dim small" id="daemon-version" hidden></p>
+      <div class="uninstall">
+        <label class="check">
+          <input type="checkbox" id="uninstall-all"> Also remove BepInEx and the Proton prefix change
+        </label>
+        <button class="danger" id="uninstall">Uninstall…</button>
+        <p class="error" id="uninstall-error" hidden></p>
+      </div>
+    </details>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

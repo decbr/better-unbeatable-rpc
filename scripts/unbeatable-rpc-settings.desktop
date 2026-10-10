@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=UNBEATABLE RPC
+Comment=Discord Rich Presence settings for UNBEATABLE
+Exec=@BIN_DIR@/unbeatable-rpc-settings
+Icon=preferences-desktop
+Terminal=false
+Categories=Settings;Game;
+StartupWMClass=unbeatable-rpc-settings

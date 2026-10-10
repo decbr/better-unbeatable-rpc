@@ -27,8 +27,21 @@ jobs:
 
       - run: make test
 
+  test-gui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: gui/go.mod
+
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - run: make test-gui
+
   release:
-    needs: test
+    needs: [test, test-gui]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -38,9 +51,12 @@ jobs:
           # full history and tags, to find the previous tag
           fetch-depth: 0
 
+      # the settings app needs a newer Go than the daemon, and WebKitGTK
       - uses: actions/setup-go@v6
         with:
-          go-version-file: go.mod
+          go-version-file: gui/go.mod
+
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev
 
       - name: Versions match the tag
         shell: bash

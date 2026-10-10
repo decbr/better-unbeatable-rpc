@@ -36,7 +36,6 @@ namespace UnbeatableRPC
         private static SongFacts lastArcadeSong;
         private static bool inResults;
         private static float? stars;
-        private static long startedAt;
 
         private UdpSender sender;
         private float nextPoll;
@@ -76,7 +75,6 @@ namespace UnbeatableRPC
             currentController = controller;
             currentSong = facts;
             inResults = false;
-            startedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             Plugin.Debug($"Song started: {facts.Song} [{facts.Difficulty}] arcade={facts.Arcade} board={facts.BoardKey} pb={facts.Best?.Score}");
         }
 
@@ -150,7 +148,7 @@ namespace UnbeatableRPC
             }
             if (scene != ResultsScene) inResults = false;
 
-            var msg = new StateMessage { Stars = stars };
+            var msg = new StateMessage { Stars = stars, LaunchedAt = Plugin.LaunchedAt };
 
             if (currentSong != null && currentController != null)
             {
@@ -165,13 +163,7 @@ namespace UnbeatableRPC
                 ApplyBest(msg, s.Best);
 
                 // inPauseMenu, not isPaused: isPaused is also true on loading screens (e.g. after the last note).
-                bool paused = JeffBezosController.inPauseMenu || currentController.song.isPausedWait;
-                msg.Paused = paused;
-                if (!paused)
-                {
-                    ResyncStart();
-                    msg.StartedAt = startedAt;
-                }
+                msg.Paused = JeffBezosController.inPauseMenu || currentController.song.isPausedWait;
                 return msg;
             }
 
@@ -196,15 +188,6 @@ namespace UnbeatableRPC
 
             msg.State = "idle";
             return msg;
-        }
-
-        private static void ResyncStart()
-        {
-            float positionMs = Mathf.Max(0f, JeffBezosController.prevSongTime);
-            float speed = Mathf.Abs(currentController.timeScale);
-            if (speed < 0.01f) return;
-            long expected = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - (long)(positionMs / 1000f / speed);
-            if (Math.Abs(expected - startedAt) > 2) startedAt = expected;
         }
 
         private static void ApplyBest(StateMessage msg, HighScore.Best best)

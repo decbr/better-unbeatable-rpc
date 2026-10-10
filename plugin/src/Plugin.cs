@@ -20,10 +20,12 @@ namespace UnbeatableRPC
         internal static ConfigEntry<bool> DisableGameDiscord;
         internal static ConfigEntry<bool> DebugLogging;
         internal static ConfigEntry<float> LastKnownStars;
+        internal static long LaunchedAt;
 
         private void Awake()
         {
             Log = Logger;
+            LaunchedAt = GameLaunchTime();
 
             UdpPort = Config.Bind("General", "UdpPort", 47820,
                 "UDP port on 127.0.0.1 that the unbeatable-rpc daemon listens on.");
@@ -42,6 +44,23 @@ namespace UnbeatableRPC
             host.AddComponent<GameTracker>();
 
             Log.LogInfo($"{Name} {Version} loaded; sending to 127.0.0.1:{UdpPort.Value}");
+        }
+
+        // Unix seconds the game started. The process start time if Wine reports a
+        // sane one, else now: BepInEx loads plugins moments after launch anyway.
+        private static long GameLaunchTime()
+        {
+            var now = DateTimeOffset.UtcNow;
+            try
+            {
+                var start = new DateTimeOffset(System.Diagnostics.Process.GetCurrentProcess().StartTime.ToUniversalTime());
+                if (start <= now && now - start < TimeSpan.FromMinutes(10)) return start.ToUnixTimeSeconds();
+            }
+            catch (Exception e)
+            {
+                Debug($"No process start time: {e.Message}");
+            }
+            return now.ToUnixTimeSeconds();
         }
 
         private static void ApplyPatches()

@@ -253,3 +253,25 @@ func TestManagerStatus(t *testing.T) {
 		return !st.GameRunning && !st.Discord.Connected && st.Activity == nil
 	})
 }
+
+func TestManagerFallsBackToSessionStart(t *testing.T) {
+	r := newRecorder(t)
+	m, states := startManagerWith(t, r, 10*time.Millisecond, time.Minute)
+
+	before := time.Now().Unix()
+	states <- State{V: 1, State: StateIdle}
+	waitFor(t, "activity", func() bool { return m.Status().Activity != nil })
+	first := m.Status().Activity.Timestamps
+	if first == nil || first.Start < before || first.Start > time.Now().Unix() {
+		t.Fatalf("timestamps %+v, want the time the game was first heard from", first)
+	}
+
+	// the session start sticks across messages; a plugin's launchedAt wins
+	states <- State{V: 1, State: StateArcade, Song: "Low"}
+	waitFor(t, "song activity", func() bool { a := m.Status().Activity; return a != nil && a.Details == "Low" })
+	if got := m.Status().Activity.Timestamps.Start; got != first.Start {
+		t.Errorf("start moved from %d to %d during the session", first.Start, got)
+	}
+	states <- State{V: 1, State: StateArcade, Song: "Low", LaunchedAt: 42}
+	waitFor(t, "plugin launch time", func() bool { a := m.Status().Activity; return a != nil && a.Timestamps.Start == 42 })
+}

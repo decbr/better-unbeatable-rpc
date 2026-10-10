@@ -19,7 +19,7 @@ namespace UnbeatableRPC
         public string Rank;
         public float? Stars;
         public bool? Paused;
-        public long? StartedAt;
+        public long? LaunchedAt;
 
         public string ToJson()
         {
@@ -37,7 +37,7 @@ namespace UnbeatableRPC
             Add(sb, "rank", Rank);
             if (Stars.HasValue) sb.Append(",\"stars\":").Append(Stars.Value.ToString("0.###", CultureInfo.InvariantCulture));
             if (Paused.HasValue) sb.Append(",\"paused\":").Append(Paused.Value ? "true" : "false");
-            if (StartedAt.HasValue) sb.Append(",\"startedAt\":").Append(StartedAt.Value);
+            if (LaunchedAt.HasValue) sb.Append(",\"launchedAt\":").Append(LaunchedAt.Value);
             return sb.Append('}').ToString();
         }
 

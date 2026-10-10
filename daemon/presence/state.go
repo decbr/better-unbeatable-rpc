@@ -29,7 +29,9 @@ type State struct {
 	Rank       string   `json:"rank,omitempty"`
 	Stars      *float64 `json:"stars,omitempty"`
 	Paused     bool     `json:"paused,omitempty"`
-	StartedAt  int64    `json:"startedAt,omitempty"`
+	// LaunchedAt is when the game started, in Unix seconds: the timer shown
+	// in every state.
+	LaunchedAt int64 `json:"launchedAt,omitempty"`
 }
 
 func ParseState(data []byte) (State, error) {

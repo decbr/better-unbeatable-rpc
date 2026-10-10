@@ -16,7 +16,7 @@ import (
 type step struct {
 	name string
 	hold time.Duration
-	json func(now int64) string
+	json string
 }
 
 func main() {
@@ -43,12 +43,18 @@ func main() {
 		return
 	}
 
+	// like the plugin, every message carries when the "game" was launched
+	launched := time.Now().Unix()
+	stamp := func(msg string) string {
+		return strings.Replace(msg, `{"v":1,`, fmt.Sprintf(`{"v":1,"launchedAt":%d,`, launched), 1)
+	}
+
 	if *hold != "" {
 		msg, ok := holds[*hold]
 		if !ok {
 			log.Fatalf("unknown -hold %q (have: %s)", *hold, strings.Join(holdNames(), ", "))
 		}
-		msg = strings.ReplaceAll(msg, "NOW", fmt.Sprint(time.Now().Unix()))
+		msg = stamp(msg)
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 		log.Printf("holding %s; Ctrl+C to stop", *hold)
@@ -65,30 +71,20 @@ func main() {
 		}
 	}
 
-	var started int64
 	steps := []step{
-		{"idle (menus, stars)", *stepLen, func(int64) string { return `{"v":1,"state":"idle","stars":12.345}` }},
-		{"arcade song", *stepLen, func(now int64) string {
-			if started == 0 {
-				started = now
-			}
-			return fmt.Sprintf(`{"v":1,"state":"arcade",%s,"startedAt":%d}`, song, started)
-		}},
-		{"paused", *stepLen, func(int64) string { return fmt.Sprintf(`{"v":1,"state":"arcade",%s,"paused":true}`, song) }},
-		{"resumed (timer shifted by the pause)", *stepLen, func(int64) string {
-			return fmt.Sprintf(`{"v":1,"state":"arcade",%s,"startedAt":%d}`, song, started+int64(stepLen.Seconds()))
-		}},
-		{"results (new PB)", *stepLen, func(int64) string {
-			return `{"v":1,"state":"results","song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","difficulty":"UNBEATABLE","level":20,"highScore":1201234,"accuracy":0.9512,"rank":"S+","stars":12.401}`
-		}},
-		{"story mode", *stepLen, func(int64) string { return `{"v":1,"state":"story","chapter":"Chapter 4","stars":12.401}` }},
-		{"idle again", *stepLen, func(int64) string { return `{"v":1,"state":"idle","stars":12.401}` }},
-		{"closed", 0, func(int64) string { return `{"v":1,"state":"closed"}` }},
+		{"idle (menus, stars)", *stepLen, `{"v":1,"state":"idle","stars":12.345}`},
+		{"arcade song", *stepLen, `{"v":1,"state":"arcade",` + song + `}`},
+		{"paused", *stepLen, `{"v":1,"state":"arcade",` + song + `,"paused":true}`},
+		{"resumed", *stepLen, `{"v":1,"state":"arcade",` + song + `}`},
+		{"results (new PB)", *stepLen, `{"v":1,"state":"results","song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","charter":"charter","difficulty":"UNBEATABLE","level":20,"highScore":1201234,"accuracy":0.9512,"rank":"S+","stars":12.401}`},
+		{"story mode", *stepLen, `{"v":1,"state":"story","chapter":"Chapter 4","stars":12.401}`},
+		{"idle again", *stepLen, `{"v":1,"state":"idle","stars":12.401}`},
+		{"closed", 0, `{"v":1,"state":"closed"}`},
 	}
 
 	for _, st := range steps {
 		log.Printf("-> %s", st.name)
-		msg := st.json(time.Now().Unix())
+		msg := stamp(st.json)
 		send(msg)
 		deadline := time.Now().Add(st.hold)
 		for time.Now().Before(deadline) {
@@ -101,10 +97,10 @@ func main() {
 
 const song = `"song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","charter":"charter","difficulty":"UNBEATABLE","level":20,"highScore":1166540,"accuracy":0.9361,"rank":"S","stars":12.345`
 
-// holds are the states -hold can send; NOW becomes the current time.
+// holds are the states -hold can send.
 var holds = map[string]string{
 	"idle":    `{"v":1,"state":"idle","stars":12.345}`,
-	"arcade":  `{"v":1,"state":"arcade",` + song + `,"startedAt":NOW}`,
+	"arcade":  `{"v":1,"state":"arcade",` + song + `}`,
 	"paused":  `{"v":1,"state":"arcade",` + song + `,"paused":true}`,
 	"results": `{"v":1,"state":"results",` + song + `}`,
 	"story":   `{"v":1,"state":"story","chapter":"Chapter 4","stars":12.345}`,

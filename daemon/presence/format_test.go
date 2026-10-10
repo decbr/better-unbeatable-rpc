@@ -44,16 +44,36 @@ func TestFitField(t *testing.T) {
 }
 
 func TestParseState(t *testing.T) {
-	s, err := ParseState([]byte(`{"v":1,"state":"arcade","song":"Low","highScore":123456,"accuracy":0.973,"rank":"S","stars":42.5,"paused":false,"startedAt":1727790000}`))
+	s, err := ParseState([]byte(`{"v":1,"state":"arcade","song":"Low","highScore":123456,"accuracy":0.973,"rank":"S","stars":42.5,"paused":false,"launchedAt":1727790000}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Song != "Low" || *s.HighScore != 123456 || *s.Stars != 42.5 || s.StartedAt != 1727790000 {
+	if s.Song != "Low" || *s.HighScore != 123456 || *s.Stars != 42.5 || s.LaunchedAt != 1727790000 {
 		t.Errorf("parsed %+v", s)
 	}
 	for _, bad := range []string{`{"v":2,"state":"idle"}`, `{"v":1,"state":"dancing"}`, `not json`} {
 		if _, err := ParseState([]byte(bad)); err == nil {
 			t.Errorf("ParseState(%s) succeeded, want error", bad)
 		}
+	}
+}
+
+func TestTimerIsGameLaunchInEveryState(t *testing.T) {
+	for _, st := range []State{
+		{V: 1, State: StateIdle, LaunchedAt: 100},
+		{V: 1, State: StateStory, Chapter: "Chapter 4", LaunchedAt: 100},
+		{V: 1, State: StateArcade, Song: "Low", LaunchedAt: 100},
+		{V: 1, State: StateArcade, Song: "Low", Paused: true, LaunchedAt: 100},
+		{V: 1, State: StateResults, Song: "Low", LaunchedAt: 100},
+	} {
+		for name, style := range Styles {
+			a := Format(st, Options{Style: style})
+			if a.Timestamps == nil || a.Timestamps.Start != 100 {
+				t.Errorf("%s, %s (paused=%v): timestamps %+v, want start 100", name, st.State, st.Paused, a.Timestamps)
+			}
+		}
+	}
+	if a := Format(State{V: 1, State: StateIdle}, Options{}); a.Timestamps != nil {
+		t.Errorf("no launch time: timestamps %+v, want none", a.Timestamps)
 	}
 }

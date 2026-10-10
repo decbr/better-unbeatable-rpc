@@ -5,7 +5,7 @@ import "testing"
 func TestDetailedStyle(t *testing.T) {
 	opts := Options{LargeImage: "logo", LargeText: "UNBEATABLE", Style: Detailed}
 	arcade := State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide ft. Rachel Lake",
-		Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B", StartedAt: 1727790000}
+		Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B", LaunchedAt: 1727790000}
 
 	cases := []struct {
 		name          string
@@ -19,11 +19,11 @@ func TestDetailedStyle(t *testing.T) {
 		{name: "arcade with PB", in: arcade,
 			details: "RE-TUNED - peak divide ft. Rachel Lake", state: "UNBEATABLE Lv 20 · PB: 1,155,577 (B)", start: 1727790000, largeText: "UNBEATABLE"},
 		{name: "arcade without PB",
-			in:      State{V: 1, State: StateArcade, Song: "Familiar Acoustic", Difficulty: "Hard", StartedAt: 5},
+			in:      State{V: 1, State: StateArcade, Song: "Familiar Acoustic", Difficulty: "Hard", LaunchedAt: 5},
 			details: "Familiar Acoustic", state: "Hard · No PB yet", start: 5, largeText: "UNBEATABLE"},
-		{name: "arcade paused drops timer",
+		{name: "arcade paused keeps the game timer",
 			in:      func() State { s := arcade; s.Paused = true; return s }(),
-			details: "RE-TUNED - peak divide ft. Rachel Lake (paused)", state: "UNBEATABLE Lv 20 · PB: 1,155,577 (B)", largeText: "UNBEATABLE"},
+			details: "RE-TUNED - peak divide ft. Rachel Lake (paused)", state: "UNBEATABLE Lv 20 · PB: 1,155,577 (B)", start: 1727790000, largeText: "UNBEATABLE"},
 		{name: "PB without grade",
 			in:      State{V: 1, State: StateArcade, Song: "X", Difficulty: "Star", HighScore: ptr(999)},
 			details: "X ", state: "Star · PB: 999", largeText: "UNBEATABLE"},
@@ -43,7 +43,7 @@ func TestDetailedStyle(t *testing.T) {
 			in:      State{V: 1, State: StateStory},
 			details: "Story mode", largeText: "UNBEATABLE"},
 		{name: "story rhythm section keeps timer",
-			in:      State{V: 1, State: StateStory, Chapter: "Chapter 2", Song: "Low", StartedAt: 42},
+			in:      State{V: 1, State: StateStory, Chapter: "Chapter 2", Song: "Low", LaunchedAt: 42},
 			details: "Story mode - Chapter 2", start: 42, largeText: "UNBEATABLE"},
 		{name: "story rhythm section paused",
 			in:      State{V: 1, State: StateStory, Chapter: "Chapter 2", Song: "Low", Paused: true},
@@ -102,11 +102,11 @@ func TestSpotifyStyle(t *testing.T) {
 		start   int64
 	}{
 		{name: "arcade",
-			in:      State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide ft. Rachel Lake", Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), StartedAt: 7},
+			in:      State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide ft. Rachel Lake", Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), LaunchedAt: 7},
 			details: "RE-TUNED", state: "peak divide ft. Rachel Lake", start: 7},
 		{name: "arcade paused",
-			in:      State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide", Paused: true, StartedAt: 7},
-			details: "RE-TUNED (paused)", state: "peak divide"},
+			in:      State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide", Paused: true, LaunchedAt: 7},
+			details: "RE-TUNED (paused)", state: "peak divide", start: 7},
 		{name: "song without artist",
 			in:      State{V: 1, State: StateArcade, Song: "Custom"},
 			details: "Custom"},
@@ -114,7 +114,7 @@ func TestSpotifyStyle(t *testing.T) {
 			in:      State{V: 1, State: StateResults, Song: "YEAH YEAH", Artist: "peak divide", HighScore: ptr(1)},
 			details: "YEAH YEAH", state: "peak divide"},
 		{name: "story rhythm section",
-			in:      State{V: 1, State: StateStory, Chapter: "Chapter 2", Song: "Low", Artist: "peak divide", StartedAt: 42},
+			in:      State{V: 1, State: StateStory, Chapter: "Chapter 2", Song: "Low", Artist: "peak divide", LaunchedAt: 42},
 			details: "Low", state: "peak divide", start: 42},
 		{name: "story walking around",
 			in:      State{V: 1, State: StateStory, Chapter: "Chapter 4", Stars: ptr(8.7)},
@@ -172,7 +172,7 @@ func TestOsuStyle(t *testing.T) {
 		state   string
 	}{
 		{name: "full",
-			in:      State{V: 1, State: StateArcade, Song: "Die For You", Artist: "Grabbitz", Charter: "AirinCat", Difficulty: "Insane", Level: ptr(9), StartedAt: 3},
+			in:      State{V: 1, State: StateArcade, Song: "Die For You", Artist: "Grabbitz", Charter: "AirinCat", Difficulty: "Insane", Level: ptr(9), LaunchedAt: 3},
 			details: "Grabbitz - Die For You (AirinCat) [Insane]", state: osuActivity},
 		{name: "no charter",
 			in:      State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide", Difficulty: "UNBEATABLE"},

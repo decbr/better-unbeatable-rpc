@@ -27,8 +27,9 @@ func Format(s State, o Options) *discordipc.Activity {
 	inSong := s.State == StateArcade || s.State == StateStory && s.Song != ""
 	if inSong && s.Paused {
 		a.Details += " (paused)"
-	} else if inSong && s.StartedAt > 0 {
-		a.Timestamps = &discordipc.Timestamps{Start: s.StartedAt}
+	}
+	if s.LaunchedAt > 0 {
+		a.Timestamps = &discordipc.Timestamps{Start: s.LaunchedAt}
 	}
 
 	a.Details = fitField(a.Details)

@@ -32,7 +32,10 @@ type Manager struct {
 	backoff   time.Duration
 	dialFails int
 	lastState State
-	lastError string
+	// sessionStart is when this game session was first heard from: the timer
+	// for plugins too old to send launchedAt.
+	sessionStart time.Time
+	lastError    string
 
 	mu      sync.Mutex
 	pending *Update
@@ -188,6 +191,10 @@ func (m *Manager) handle(s State, now time.Time) {
 	}
 	if !m.gameAlive {
 		m.Log.Printf("game is running")
+		m.sessionStart = now
+	}
+	if s.LaunchedAt == 0 {
+		s.LaunchedAt = m.sessionStart.Unix()
 	}
 	m.gameAlive = true
 	m.lastState = s

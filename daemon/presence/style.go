@@ -2,7 +2,6 @@ package presence
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -11,25 +10,31 @@ type Style func(s State) (details, state string)
 
 const DefaultStyle = "detailed"
 
-var Styles = map[string]Style{
-	"detailed": Detailed,
-	"spotify":  Spotify,
-	"osu":      Osu,
+type NamedStyle struct {
+	Name  string
+	Style Style
+}
+
+var Styles = []NamedStyle{
+	{"detailed", Detailed},
+	{"spotify", Spotify},
+	{"osu", Osu},
 	// add more...
 }
 
 func StyleNames() []string {
-	names := make([]string, 0, len(Styles))
-	for name := range Styles {
-		names = append(names, name)
+	names := make([]string, len(Styles))
+	for i, s := range Styles {
+		names[i] = s.Name
 	}
-	sort.Strings(names)
 	return names
 }
 
 func LookupStyle(name string) (Style, error) {
-	if style, ok := Styles[strings.ToLower(name)]; ok {
-		return style, nil
+	for _, s := range Styles {
+		if s.Name == strings.ToLower(name) {
+			return s.Style, nil
+		}
 	}
 	return nil, fmt.Errorf("unknown style %q (have: %s)", name, strings.Join(StyleNames(), ", "))
 }

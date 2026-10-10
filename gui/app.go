@@ -58,8 +58,8 @@ func (a *App) Load() View {
 		v.FileError = err.Error()
 	}
 	v.File = file
-	for _, name := range presence.StyleNames() {
-		v.Styles = append(v.Styles, StyleInfo{Name: name, Previews: previews(presence.Styles[name])})
+	for _, s := range presence.Styles {
+		v.Styles = append(v.Styles, StyleInfo{Name: s.Name, Previews: previews(s.Style)})
 	}
 	return v
 }

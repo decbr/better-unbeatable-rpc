@@ -66,7 +66,8 @@ func TestTimerIsGameLaunchInEveryState(t *testing.T) {
 		{V: 1, State: StateArcade, Song: "Low", Paused: true, LaunchedAt: 100},
 		{V: 1, State: StateResults, Song: "Low", LaunchedAt: 100},
 	} {
-		for name, style := range Styles {
+		for _, s := range Styles {
+			name, style := s.Name, s.Style
 			a := Format(st, Options{Style: style})
 			if a.Timestamps == nil || a.Timestamps.Start != 100 {
 				t.Errorf("%s, %s (paused=%v): timestamps %+v, want start 100", name, st.State, st.Paused, a.Timestamps)

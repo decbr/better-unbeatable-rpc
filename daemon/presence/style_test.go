@@ -1,6 +1,9 @@
 package presence
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDetailedStyle(t *testing.T) {
 	opts := Options{LargeImage: "logo", LargeText: "UNBEATABLE", Style: Detailed}
@@ -147,7 +150,7 @@ func TestSpotifyStyle(t *testing.T) {
 }
 
 func TestLookupStyle(t *testing.T) {
-	if _, ok := Styles[DefaultStyle]; !ok {
+	if _, err := LookupStyle(DefaultStyle); err != nil {
 		t.Fatalf("default style %q is not registered", DefaultStyle)
 	}
 	for _, name := range StyleNames() {
@@ -207,5 +210,18 @@ func TestParseStateCharter(t *testing.T) {
 	s, err := ParseState([]byte(`{"v":1,"state":"arcade","song":"Low","charter":"AirinCat"}`))
 	if err != nil || s.Charter != "AirinCat" {
 		t.Errorf("got %+v, %v", s, err)
+	}
+}
+
+func TestStyleNamesUniqueAndLowercase(t *testing.T) {
+	seen := map[string]bool{}
+	for _, name := range StyleNames() {
+		if seen[name] {
+			t.Errorf("style %q registered twice", name)
+		}
+		if name != strings.ToLower(name) {
+			t.Errorf("style %q isn't lower case, so LookupStyle can't find it", name)
+		}
+		seen[name] = true
 	}
 }

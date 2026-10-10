@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/config"
+	"github.com/decbr/better-unbeatable-rpc/daemon/presence"
 )
 
 // newTestApp has no daemon to talk to, and its settings file in a temp dir.
@@ -119,5 +121,15 @@ func TestLocations(t *testing.T) {
 	}
 	if err := a.Browse("game"); err == nil {
 		t.Error("Browse opened a folder that doesn't exist")
+	}
+}
+
+func TestLoadKeepsRegistryOrder(t *testing.T) {
+	var got []string
+	for _, s := range newTestApp(t).Load().Styles {
+		got = append(got, s.Name)
+	}
+	if want := presence.StyleNames(); strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("app lists %v, registry order is %v", got, want)
 	}
 }

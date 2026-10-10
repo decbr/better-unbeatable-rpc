@@ -14,6 +14,7 @@ const DefaultStyle = "detailed"
 var Styles = map[string]Style{
 	"detailed": Detailed,
 	"spotify":  Spotify,
+	"osu":      Osu,
 	// add more...
 }
 

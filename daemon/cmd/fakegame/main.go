@@ -99,7 +99,7 @@ func main() {
 	log.Printf("done")
 }
 
-const song = `"song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","difficulty":"UNBEATABLE","level":20,"highScore":1166540,"accuracy":0.9361,"rank":"S","stars":12.345`
+const song = `"song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","charter":"charter","difficulty":"UNBEATABLE","level":20,"highScore":1166540,"accuracy":0.9361,"rank":"S","stars":12.345`
 
 // holds are the states -hold can send; NOW becomes the current time.
 var holds = map[string]string{

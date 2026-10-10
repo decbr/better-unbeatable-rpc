@@ -20,6 +20,7 @@ type State struct {
 	State      string   `json:"state"`
 	Song       string   `json:"song,omitempty"`
 	Artist     string   `json:"artist,omitempty"`
+	Charter    string   `json:"charter,omitempty"`
 	Difficulty string   `json:"difficulty,omitempty"`
 	Level      *int     `json:"level,omitempty"`
 	Chapter    string   `json:"chapter,omitempty"`

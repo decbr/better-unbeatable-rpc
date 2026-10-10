@@ -10,6 +10,7 @@ namespace UnbeatableRPC
         public string State;
         public string Song;
         public string Artist;
+        public string Charter;
         public string Difficulty;
         public int? Level;
         public string Chapter;
@@ -27,6 +28,7 @@ namespace UnbeatableRPC
             Add(sb, "state", State);
             Add(sb, "song", Song);
             Add(sb, "artist", Artist);
+            Add(sb, "charter", Charter);
             Add(sb, "difficulty", Difficulty);
             if (Level.HasValue) sb.Append(",\"level\":").Append(Level.Value);
             Add(sb, "chapter", Chapter);

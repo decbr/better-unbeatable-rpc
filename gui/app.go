@@ -141,7 +141,7 @@ var samples = []struct {
 	state presence.State
 }{
 	{"Song", presence.State{V: 1, State: presence.StateArcade, Song: "RE-TUNED", Artist: "peak divide ft. Rachel Lake",
-		Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B"}},
+		Charter: "charter", Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B"}},
 	{"Story", presence.State{V: 1, State: presence.StateStory, Chapter: "Chapter 4", Stars: ptr(8.703)}},
 	{"Menus", presence.State{V: 1, State: presence.StateIdle, Stars: ptr(8.703)}},
 }

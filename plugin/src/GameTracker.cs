@@ -24,6 +24,7 @@ namespace UnbeatableRPC
             public bool Arcade;
             public string Song;
             public string Artist;
+            public string Charter;
             public string Difficulty;
             public int Level;
             public string BoardKey;
@@ -60,6 +61,7 @@ namespace UnbeatableRPC
                          && progression is ArcadeProgression,
                 Song = NonEmpty(meta?.title) ?? NonEmpty(progression?.GetSongName()),
                 Artist = NonEmpty(meta?.artist),
+                Charter = NonEmpty(meta?.creator),
                 Difficulty = NonEmpty(meta?.GetDifficulty(progression?.GetDifficulty()))
                              ?? NonEmpty(progression?.GetDifficulty()),
                 Level = meta != null ? meta.tagData.Level : 0,
@@ -156,6 +158,7 @@ namespace UnbeatableRPC
                 msg.State = s.Arcade ? "arcade" : "story";
                 msg.Song = s.Song;
                 msg.Artist = s.Artist;
+                msg.Charter = s.Charter;
                 msg.Difficulty = s.Difficulty;
                 msg.Level = s.Level > 0 ? s.Level : (int?)null;
                 if (!s.Arcade) msg.Chapter = currentChapter;
@@ -177,6 +180,7 @@ namespace UnbeatableRPC
                 msg.State = "results";
                 msg.Song = lastArcadeSong.Song;
                 msg.Artist = lastArcadeSong.Artist;
+                msg.Charter = lastArcadeSong.Charter;
                 msg.Difficulty = lastArcadeSong.Difficulty;
                 msg.Level = lastArcadeSong.Level > 0 ? lastArcadeSong.Level : (int?)null;
                 ApplyBest(msg, lastArcadeSong.Best);

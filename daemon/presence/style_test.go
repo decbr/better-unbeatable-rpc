@@ -162,3 +162,50 @@ func TestLookupStyle(t *testing.T) {
 		t.Error("LookupStyle(nope) succeeded, want error")
 	}
 }
+
+func TestOsuStyle(t *testing.T) {
+	opts := Options{Style: Osu}
+	cases := []struct {
+		name    string
+		in      State
+		details string
+		state   string
+	}{
+		{name: "full",
+			in:      State{V: 1, State: StateArcade, Song: "Die For You", Artist: "Grabbitz", Charter: "AirinCat", Difficulty: "Insane", Level: ptr(9), StartedAt: 3},
+			details: "Grabbitz - Die For You (AirinCat) [Insane]", state: osuActivity},
+		{name: "no charter",
+			in:      State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide", Difficulty: "UNBEATABLE"},
+			details: "peak divide - RE-TUNED [UNBEATABLE]", state: osuActivity},
+		{name: "song only",
+			in:      State{V: 1, State: StateArcade, Song: "Custom"},
+			details: "Custom", state: osuActivity},
+		{name: "paused",
+			in:      State{V: 1, State: StateArcade, Song: "Low", Artist: "pd", Charter: "c", Difficulty: "Hard", Paused: true},
+			details: "pd - Low (c) [Hard] (paused)", state: osuActivity},
+		{name: "results",
+			in:      State{V: 1, State: StateResults, Song: "Low", Artist: "pd", Charter: "c", Difficulty: "Hard"},
+			details: "pd - Low (c) [Hard]", state: osuActivity},
+		{name: "story walking around",
+			in:      State{V: 1, State: StateStory, Chapter: "Chapter 4"},
+			details: "Story mode", state: "Chapter 4"},
+		{name: "menus",
+			in:      State{V: 1, State: StateIdle, Stars: ptr(8.7)},
+			details: "In menus", state: "★ 8.700"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			a := Format(c.in, opts)
+			if a.Details != c.details || a.State != c.state {
+				t.Errorf("got %q / %q, want %q / %q", a.Details, a.State, c.details, c.state)
+			}
+		})
+	}
+}
+
+func TestParseStateCharter(t *testing.T) {
+	s, err := ParseState([]byte(`{"v":1,"state":"arcade","song":"Low","charter":"AirinCat"}`))
+	if err != nil || s.Charter != "AirinCat" {
+		t.Errorf("got %+v, %v", s, err)
+	}
+}

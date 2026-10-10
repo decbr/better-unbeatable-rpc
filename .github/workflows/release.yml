@@ -1,0 +1,86 @@
+# builds the release tarball and publishes a GitHub release when a version tag is pushed:
+#
+#   scripts/bump-version.sh 0.2.0   # sets the version, builds plugin/dist/, commits, tags v0.2.0
+#   git push --follow-tags
+#
+# the plugin can't be built here: it compiles against the game's DLLs, which can't be in the repo
+# or downloaded. so it ships the plugin/dist/UnbeatableRPC.dll that bump-version.sh built and
+# committed, and checks that its version matches the tag.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - run: make test
+
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # full history and tags, to find the previous tag
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Versions match the tag
+        shell: bash
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          fail() { echo "::error::$1"; exit 1; }
+          grep -qx "VERSION  ?= $version" Makefile || fail "Makefile VERSION isn't $version"
+          grep -q "<Version>$version</Version>" plugin/UnbeatableRPC.csproj || fail "UnbeatableRPC.csproj Version isn't $version"
+          grep -q "public const string Version = \"$version\";" plugin/src/Plugin.cs || fail "Plugin.cs Version isn't $version"
+          [ -f plugin/dist/UnbeatableRPC.dll ] || fail "plugin/dist/UnbeatableRPC.dll is missing; run scripts/bump-version.sh"
+          dll=$(pwsh -NoProfile -Command "[Reflection.AssemblyName]::GetAssemblyName('plugin/dist/UnbeatableRPC.dll').Version.ToString(3)")
+          [ "$dll" = "$version" ] || fail "plugin/dist/UnbeatableRPC.dll is version $dll, not $version"
+
+      - run: make release VERSION=${GITHUB_REF_NAME#v} PREBUILT_PLUGIN=plugin/dist/UnbeatableRPC.dll
+
+      # notes are the commits since the previous tag, minus the version bump
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          tarball=dist/better-unbeatable-rpc-$version-linux-x86_64.tar.gz
+          (cd dist && sha256sum "$(basename "$tarball")" > "$(basename "$tarball").sha256")
+          prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          {
+            echo "## Install"
+            echo
+            echo '```bash'
+            echo "tar xzf better-unbeatable-rpc-$version-linux-x86_64.tar.gz"
+            echo "cd better-unbeatable-rpc-$version-linux-x86_64"
+            echo "./install.sh"
+            echo '```'
+            echo
+            echo "## Changes"
+            echo
+            git log --format='- %s (%h)' ${prev:+"$prev.."}"$GITHUB_REF_NAME" | grep -v 'chore: bump version to' || true
+            if [ -n "$prev" ]; then
+              echo
+              echo "**Full changelog:** https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+            fi
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" "$tarball" "$tarball.sha256" \
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

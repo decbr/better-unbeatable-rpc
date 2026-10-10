@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"sort"
+	"strings"
+	"syscall"
 	"time"
 )
 
@@ -18,6 +23,7 @@ func main() {
 	port := flag.Int("port", 47820, "daemon UDP port")
 	once := flag.String("once", "", "send this single JSON message and exit")
 	stepLen := flag.Duration("step", 8*time.Second, "how long to hold each scripted state")
+	hold := flag.String("hold", "", "send this one state until Ctrl+C: "+strings.Join(holdNames(), ", "))
 	flag.Parse()
 
 	conn, err := net.DialUDP("udp", nil, &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: *port})
@@ -37,7 +43,28 @@ func main() {
 		return
 	}
 
-	const song = `"song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","difficulty":"UNBEATABLE","level":20,"highScore":1166540,"accuracy":0.9361,"rank":"S","stars":12.345`
+	if *hold != "" {
+		msg, ok := holds[*hold]
+		if !ok {
+			log.Fatalf("unknown -hold %q (have: %s)", *hold, strings.Join(holdNames(), ", "))
+		}
+		msg = strings.ReplaceAll(msg, "NOW", fmt.Sprint(time.Now().Unix()))
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+		log.Printf("holding %s; Ctrl+C to stop", *hold)
+		t := time.NewTicker(2 * time.Second)
+		defer t.Stop()
+		for send(msg); ; send(msg) {
+			select {
+			case <-stop:
+				send(`{"v":1,"state":"closed"}`)
+				log.Printf("closed")
+				return
+			case <-t.C:
+			}
+		}
+	}
+
 	var started int64
 	steps := []step{
 		{"idle (menus, stars)", *stepLen, func(int64) string { return `{"v":1,"state":"idle","stars":12.345}` }},
@@ -70,4 +97,24 @@ func main() {
 		}
 	}
 	log.Printf("done")
+}
+
+const song = `"song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","difficulty":"UNBEATABLE","level":20,"highScore":1166540,"accuracy":0.9361,"rank":"S","stars":12.345`
+
+// holds are the states -hold can send; NOW becomes the current time.
+var holds = map[string]string{
+	"idle":    `{"v":1,"state":"idle","stars":12.345}`,
+	"arcade":  `{"v":1,"state":"arcade",` + song + `,"startedAt":NOW}`,
+	"paused":  `{"v":1,"state":"arcade",` + song + `,"paused":true}`,
+	"results": `{"v":1,"state":"results",` + song + `}`,
+	"story":   `{"v":1,"state":"story","chapter":"Chapter 4","stars":12.345}`,
+}
+
+func holdNames() []string {
+	names := make([]string, 0, len(holds))
+	for n := range holds {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
 }

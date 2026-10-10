@@ -9,14 +9,26 @@ readonly BEPINEX_ROOT_FILES=(winhttp.dll doorstop_config.ini .doorstop_version c
 readonly OVERRIDE_SECTION='[Software\\Wine\\DllOverrides]'
 readonly OVERRIDE_VALUE='native,builtin'
 readonly PLUGIN_CONFIG=xyz.diaduck.unbeatable-rpc.cfg
+# a copy of this script is installed under this name, and uninstalls when run as it
+readonly UNINSTALLER=unbeatable-rpc-uninstall
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 bin_dir="$HOME/.local/bin"
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+apps_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+settings_dir="${XDG_CONFIG_HOME:-$HOME/.config}/unbeatable-rpc"
+# the settings app's web view keeps its own cache and storage here
+webview_dirs=("${XDG_CACHE_HOME:-$HOME/.cache}/unbeatable-rpc-settings" "${XDG_DATA_HOME:-$HOME/.local/share}/unbeatable-rpc-settings")
 state_dir="${XDG_STATE_HOME:-$HOME/.local/state}/unbeatable-rpc"
 state_file="$state_dir/install.env"
 
 mode=install
+if [[ "$(basename "$0")" == "$UNINSTALLER" ]]; then
+    mode=uninstall
+    uninstall_hint="$UNINSTALLER"
+else
+    uninstall_hint="./uninstall.sh"
+fi
 game_dir=""
 download_dir=""
 bepinex_zip=""
@@ -24,6 +36,7 @@ use_prefix=ask
 use_service=auto
 remove_all=false
 assume_yes=false
+settings_app_usable=false
 
 usage() {
     cat <<EOF
@@ -31,6 +44,7 @@ Usage: ./install.sh [options]
        ./install.sh --uninstall [--all]
 
 Installs BepInEx, the UnbeatableRPC plugin and the unbeatable-rpc daemon for UNBEATABLE.
+Once installed, ~/.local/bin/$UNINSTALLER [--all] uninstalls without this folder.
 
   --game-dir DIR       UNBEATABLE install folder (default: found via Steam's libraries)
   --launch-options     don't touch the Proton prefix; print Steam launch options instead
@@ -218,7 +232,10 @@ install_plugin_and_daemon() {
     install -Dm644 "$here/UnbeatableRPC.dll" "$game_dir/BepInEx/plugins/UnbeatableRPC/UnbeatableRPC.dll"
     install -Dm755 "$here/unbeatable-rpc" "$bin_dir/unbeatable-rpc"
     install -Dm755 "$here/unbeatable-launch.sh" "$bin_dir/unbeatable-launch.sh"
+    install -Dm755 "$here/install.sh" "$bin_dir/$UNINSTALLER"
     say "Installed the plugin into the game's BepInEx/plugins/ and the daemon into $bin_dir."
+
+    install_settings_app
 
     if [[ "$use_service" == auto ]] && systemctl --user show-environment >/dev/null 2>&1; then
         install -Dm644 "$here/unbeatable-rpc.service" "$unit_dir/unbeatable-rpc.service"
@@ -231,6 +248,50 @@ install_plugin_and_daemon() {
         [[ "$use_service" == no ]] || say "No systemd user session found."
         say "The daemon will be started by the launch wrapper instead."
     fi
+}
+
+install_settings_app() {
+    [[ -f "$here/unbeatable-rpc-settings" ]] || return 0
+    install -Dm755 "$here/unbeatable-rpc-settings" "$bin_dir/unbeatable-rpc-settings"
+    mkdir -p "$apps_dir"
+    sed "s#@BIN_DIR@#$bin_dir#" "$here/unbeatable-rpc-settings.desktop" >"$apps_dir/unbeatable-rpc-settings.desktop"
+    refresh_app_menu
+    say "Installed the settings app (\"UNBEATABLE RPC\" in your app menu)."
+    # not grep -q: with pipefail, ldconfig would die of SIGPIPE and fail the check
+    if ldconfig -p 2>/dev/null | grep 'libwebkit2gtk-4\.1\.so\.0' >/dev/null; then
+        settings_app_usable=true
+    else
+        say "The settings app needs WebKitGTK 4.1 (webkit2gtk-4.1 on Arch, libwebkit2gtk-4.1-0 on Debian/Ubuntu)."
+        say "Everything else works without it."
+    fi
+    local dropin
+    for dropin in "$unit_dir/unbeatable-rpc.service.d"/*.conf; do
+        if [[ -f "$dropin" ]] && grep -q 'UNBEATABLE_RPC_' "$dropin"; then
+            say "Note: $dropin sets UNBEATABLE_RPC_* variables, which win over the settings app."
+            say "Remove them there to manage those settings from the app."
+        fi
+    done
+}
+
+# most desktops notice new .desktop files on their own; this covers the ones
+# that read the cache instead
+refresh_app_menu() {
+    if command -v update-desktop-database >/dev/null; then
+        update-desktop-database -q "$apps_dir" 2>/dev/null || true
+    fi
+}
+
+# offered only when someone is at the terminal and on a desktop: never with -y
+offer_settings_app() {
+    $settings_app_usable || return 0
+    $assume_yes && return 0
+    [[ -t 0 && -t 1 ]] || return 0
+    [[ -n "${WAYLAND_DISPLAY:-}${DISPLAY:-}" ]] || return 0
+    say ""
+    if confirm "Open the settings app now? (pick a style, check Discord is connected)"; then
+        setsid -f "$bin_dir/unbeatable-rpc-settings" >/dev/null 2>&1 </dev/null || true
+    fi
+    say "Open it any time from your app menu: UNBEATABLE RPC."
 }
 
 configure_prefix() {
@@ -296,6 +357,7 @@ do_install() {
     print_launch_options "$prefix_done"
     say ""
     say "Installed. Launch UNBEATABLE and your Discord status will follow along."
+    offer_settings_app
 }
 
 do_uninstall() {
@@ -310,9 +372,12 @@ do_uninstall() {
         systemctl --user daemon-reload 2>/dev/null || true
         say "Removed the unbeatable-rpc user service."
     fi
-    rm -f "$bin_dir/unbeatable-rpc" "$bin_dir/unbeatable-launch.sh"
+    rm -f "$bin_dir/unbeatable-rpc" "$bin_dir/unbeatable-launch.sh" "$bin_dir/unbeatable-rpc-settings"
+    rm -f "$apps_dir/unbeatable-rpc-settings.desktop"
+    refresh_app_menu
+    rm -rf "$settings_dir" "${webview_dirs[@]}"
     SERVICE=false
-    say "Removed the daemon from $bin_dir."
+    say "Removed the daemon, the settings app and its settings."
 
     step "Plugin"
     if [[ -d "$game_dir" ]]; then
@@ -346,8 +411,10 @@ do_uninstall() {
         fi
     fi
 
+    # the uninstaller stays while there's something left for --all to remove
     if ! $BEPINEX_INSTALLED && [[ -z "$PREFIX_REG" ]]; then
-        rm -f "$state_file"
+        rm -f "$state_file" "$bin_dir/$UNINSTALLER"
+        rmdir "$state_dir" 2>/dev/null || true
     else
         write_state
     fi
@@ -355,7 +422,9 @@ do_uninstall() {
     step "Steam launch options"
     say "Remove this mod's parts from UNBEATABLE's launch options, if you added any"
     say "(WINEDLLOVERRIDES=\"winhttp=n,b\" and unbeatable-launch.sh)."
-    $remove_all || say "BepInEx is still installed; run with --all to remove it too."
+    if ! $remove_all && { $BEPINEX_INSTALLED || [[ -n "$PREFIX_REG" ]]; }; then
+        say "BepInEx (and the Proton prefix change, if any) are still in place; run '$uninstall_hint --all' to remove them too."
+    fi
 }
 
 while (($#)); do

@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc"
@@ -28,11 +29,17 @@ func main() {
 	clientID := flag.String("client-id", envOr("UNBEATABLE_RPC_CLIENT_ID", DefaultClientID), "Discord application ID (env UNBEATABLE_RPC_CLIENT_ID)")
 	port := flag.Int("port", envInt("UNBEATABLE_RPC_PORT", defaultPort), "UDP port to listen on, 127.0.0.1 only (env UNBEATABLE_RPC_PORT)")
 	largeImage := flag.String("large-image", os.Getenv("UNBEATABLE_RPC_LARGE_IMAGE"), `art asset key for the large image; default "logo", or "drp_icon" with the game's own client ID (env UNBEATABLE_RPC_LARGE_IMAGE)`)
+	styleName := flag.String("style", envOr("UNBEATABLE_RPC_STYLE", presence.DefaultStyle), "presence text style: "+strings.Join(presence.StyleNames(), ", ")+" (env UNBEATABLE_RPC_STYLE)")
 	socket := flag.String("socket", os.Getenv("UNBEATABLE_RPC_SOCKET"), "explicit discord-ipc socket path; default is to search (env UNBEATABLE_RPC_SOCKET)")
 	verbose := flag.Bool("verbose", envBool("UNBEATABLE_RPC_VERBOSE"), "log every message and activity (env UNBEATABLE_RPC_VERBOSE)")
 	flag.Parse()
 
 	logger := log.New(os.Stderr, "unbeatable-rpc: ", log.LstdFlags)
+
+	style, err := presence.LookupStyle(*styleName)
+	if err != nil {
+		logger.Fatal(err)
+	}
 
 	if *largeImage == "" {
 		*largeImage = "logo"
@@ -48,7 +55,7 @@ func main() {
 	if err != nil {
 		logger.Fatalf("listen on 127.0.0.1:%d: %v", *port, err)
 	}
-	logger.Printf("listening on %s, client ID %s", conn.LocalAddr(), *clientID)
+	logger.Printf("listening on %s, client ID %s, style %s", conn.LocalAddr(), *clientID, *styleName)
 
 	states := make(chan presence.State, 64)
 	go receive(ctx, conn, states, logger, *verbose)
@@ -58,7 +65,7 @@ func main() {
 		paths = []string{*socket}
 	}
 	m := &presence.Manager{
-		Options: presence.Options{LargeImage: *largeImage, LargeText: "UNBEATABLE"},
+		Options: presence.Options{LargeImage: *largeImage, LargeText: "UNBEATABLE", Style: style},
 		Log:     logger,
 		Verbose: *verbose,
 		Dial: func(ctx context.Context) (*discordipc.Client, error) {

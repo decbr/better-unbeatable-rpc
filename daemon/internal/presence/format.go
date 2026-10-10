@@ -1,9 +1,6 @@
 package presence
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
 	"unicode/utf8"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc"
@@ -12,30 +9,20 @@ import (
 type Options struct {
 	LargeImage string
 	LargeText  string
+	Style      Style // see style.go :)
 }
 
 func Format(s State, o Options) *discordipc.Activity {
-	a := &discordipc.Activity{}
-
-	switch s.State {
-	case StateArcade:
-		a.Details = songLine(s)
-		a.State = chartLine(s)
-	case StateResults:
-		a.Details = "Results: " + songLine(s)
-		a.State = chartLine(s)
-	case StateStory:
-		a.Details = "Story mode"
-		if s.Chapter != "" {
-			a.Details += " - " + s.Chapter
-		}
-		a.State = starsLine(s)
-	case StateIdle:
-		a.Details = "In menus"
-		a.State = starsLine(s)
-	default:
+	if s.State == StateClosed {
 		return nil
 	}
+	style := o.Style
+	if style == nil {
+		style = Detailed
+	}
+
+	a := &discordipc.Activity{}
+	a.Details, a.State = style(s)
 
 	inSong := s.State == StateArcade || s.State == StateStory && s.Song != ""
 	if inSong && s.Paused {
@@ -53,67 +40,11 @@ func Format(s State, o Options) *discordipc.Activity {
 	return a
 }
 
-func songLine(s State) string {
-	song := s.Song
-	if song == "" {
-		song = "Unknown song"
+func songTitle(s State) string {
+	if s.Song == "" {
+		return "Unknown song"
 	}
-	if s.Artist == "" {
-		return song
-	}
-	return song + " - " + s.Artist
-}
-
-func chartLine(s State) string {
-	var parts []string
-	if s.Difficulty != "" {
-		parts = append(parts, s.Difficulty)
-	}
-	if s.Level != nil && *s.Level > 0 {
-		parts = append(parts, fmt.Sprintf("Lv %d", *s.Level))
-	}
-	chart := strings.Join(parts, " ")
-	if chart == "" {
-		return pbLine(s)
-	}
-	return chart + " · " + pbLine(s)
-}
-
-func starsLine(s State) string {
-	if s.Stars == nil {
-		return ""
-	}
-	return "★ " + strconv.FormatFloat(*s.Stars, 'f', 3, 64)
-}
-
-func pbLine(s State) string {
-	if s.HighScore == nil {
-		return "No PB yet"
-	}
-	line := "PB: " + thousands(*s.HighScore)
-	if s.Rank != "" {
-		line += " (" + s.Rank + ")"
-	}
-	return line
-}
-
-func thousands(n int) string {
-	s := strconv.Itoa(n)
-	neg := strings.HasPrefix(s, "-")
-	if neg {
-		s = s[1:]
-	}
-	var b strings.Builder
-	for i, r := range s {
-		if i > 0 && (len(s)-i)%3 == 0 {
-			b.WriteByte(',')
-		}
-		b.WriteRune(r)
-	}
-	if neg {
-		return "-" + b.String()
-	}
-	return b.String()
+	return s.Song
 }
 
 const (

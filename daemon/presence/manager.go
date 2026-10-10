@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc"
@@ -30,6 +31,36 @@ type Manager struct {
 	nextDial  time.Time
 	backoff   time.Duration
 	dialFails int
+	lastState State
+	lastError string
+
+	mu      sync.Mutex
+	pending *Update
+	wake    chan struct{}
+	status  Status
+}
+
+// Update changes the manager's settings while it runs.
+type Update struct {
+	Options Options
+	Verbose bool
+	// Reconnect drops the Discord connection so the next one uses new dial
+	// settings (client ID, socket).
+	Reconnect bool
+}
+
+// Status is what the manager is doing, for the status endpoint.
+type Status struct {
+	GameRunning bool                 `json:"gameRunning"`
+	LastHeard   *time.Time           `json:"lastHeard,omitempty"`
+	Discord     DiscordStatus        `json:"discord"`
+	Activity    *discordipc.Activity `json:"activity"`
+}
+
+type DiscordStatus struct {
+	Connected bool   `json:"connected"`
+	Socket    string `json:"socket,omitempty"`
+	LastError string `json:"lastError,omitempty"`
 }
 
 const (
@@ -53,6 +84,7 @@ func (m *Manager) Run(ctx context.Context, states <-chan State) {
 
 	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
+	defer m.publish()
 	defer m.disconnect(true)
 
 	for {
@@ -69,10 +101,79 @@ func (m *Manager) Run(ctx context.Context, states <-chan State) {
 			m.Log.Printf("discord connection lost: %v", m.client.Err())
 			m.client = nil
 			m.nextDial = time.Now().Add(m.backoff)
+		case <-m.wakeCh():
+			m.mu.Lock()
+			u := m.pending
+			m.pending = nil
+			m.mu.Unlock()
+			if u != nil {
+				m.apply(*u)
+			}
 		case <-ticker.C:
 		}
 		m.reconcile(ctx, time.Now())
+		m.publish()
 	}
+}
+
+// Apply hands new settings to a running manager.
+func (m *Manager) Apply(u Update) {
+	m.mu.Lock()
+	m.pending = &u
+	m.mu.Unlock()
+	select {
+	case m.wakeCh() <- struct{}{}:
+	default:
+	}
+}
+
+// Status returns a snapshot of what the manager is doing.
+func (m *Manager) Status() Status {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.status
+}
+
+func (m *Manager) wakeCh() chan struct{} {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.wake == nil {
+		m.wake = make(chan struct{}, 1)
+	}
+	return m.wake
+}
+
+func (m *Manager) apply(u Update) {
+	m.Options = u.Options
+	m.Verbose = u.Verbose
+	if u.Reconnect {
+		m.disconnect(true)
+		m.nextDial = time.Time{}
+		m.backoff = minBackoff
+		m.dialFails = 0
+	}
+	if m.gameAlive {
+		m.desired = Format(m.lastState, m.Options)
+	}
+}
+
+func (m *Manager) publish() {
+	st := Status{GameRunning: m.gameAlive, Discord: DiscordStatus{LastError: m.lastError}}
+	if !m.lastHeard.IsZero() {
+		t := m.lastHeard
+		st.LastHeard = &t
+	}
+	if m.client != nil {
+		st.Discord.Connected = true
+		st.Discord.Socket = m.client.Path
+	}
+	if m.sentValid && m.sent != nil {
+		a := *m.sent
+		st.Activity = &a
+	}
+	m.mu.Lock()
+	m.status = st
+	m.mu.Unlock()
 }
 
 func (m *Manager) handle(s State, now time.Time) {
@@ -89,6 +190,7 @@ func (m *Manager) handle(s State, now time.Time) {
 		m.Log.Printf("game is running")
 	}
 	m.gameAlive = true
+	m.lastState = s
 	m.desired = Format(s, m.Options)
 }
 
@@ -113,6 +215,7 @@ func (m *Manager) reconcile(ctx context.Context, now time.Time) {
 		cancel()
 		if err != nil {
 			m.dialFails++
+			m.lastError = err.Error()
 			if m.dialFails == 1 || m.Verbose {
 				m.Log.Printf("cannot reach Discord (retrying with backoff): %v", err)
 			}
@@ -123,6 +226,7 @@ func (m *Manager) reconcile(ctx context.Context, now time.Time) {
 		m.Log.Printf("connected to %s", c.Path)
 		m.client = c
 		m.dialFails = 0
+		m.lastError = ""
 		m.backoff = minBackoff
 		m.sentValid = false
 	}
@@ -135,6 +239,7 @@ func (m *Manager) reconcile(ctx context.Context, now time.Time) {
 	}
 	if err := m.client.SetActivity(ctx, m.desired); err != nil {
 		m.Log.Printf("SET_ACTIVITY failed: %v", err)
+		m.lastError = "SET_ACTIVITY: " + err.Error()
 		m.client.Close()
 		m.client = nil
 		m.nextDial = now.Add(m.backoff)

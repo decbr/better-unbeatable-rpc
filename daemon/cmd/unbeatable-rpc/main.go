@@ -7,45 +7,69 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
+	"time"
 
+	"github.com/decbr/better-unbeatable-rpc/daemon/config"
 	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc"
 	"github.com/decbr/better-unbeatable-rpc/daemon/presence"
+	"github.com/decbr/better-unbeatable-rpc/daemon/status"
 )
 
+// version is set by the Makefile.
+var version = "dev"
+
 const (
-	DefaultClientID = "1555205185792516146"
-
-	GameClientID = "892184493899804682"
-
 	defaultPort = 47820
+	watchEvery  = 2 * time.Second
+	largeText   = "UNBEATABLE"
 )
 
 func main() {
-	clientID := flag.String("client-id", envOr("UNBEATABLE_RPC_CLIENT_ID", DefaultClientID), "Discord application ID (env UNBEATABLE_RPC_CLIENT_ID)")
-	port := flag.Int("port", envInt("UNBEATABLE_RPC_PORT", defaultPort), "UDP port to listen on, 127.0.0.1 only (env UNBEATABLE_RPC_PORT)")
-	largeImage := flag.String("large-image", os.Getenv("UNBEATABLE_RPC_LARGE_IMAGE"), `art asset key for the large image; default "logo", or "drp_icon" with the game's own client ID (env UNBEATABLE_RPC_LARGE_IMAGE)`)
-	styleName := flag.String("style", envOr("UNBEATABLE_RPC_STYLE", presence.DefaultStyle), "presence text style: "+strings.Join(presence.StyleNames(), ", ")+" (env UNBEATABLE_RPC_STYLE)")
-	socket := flag.String("socket", os.Getenv("UNBEATABLE_RPC_SOCKET"), "explicit discord-ipc socket path; default is to search (env UNBEATABLE_RPC_SOCKET)")
-	verbose := flag.Bool("verbose", envBool("UNBEATABLE_RPC_VERBOSE"), "log every message and activity (env UNBEATABLE_RPC_VERBOSE)")
+	defaultPath, _ := config.Path()
+
+	port := flag.Int("port", envInt("UNBEATABLE_RPC_PORT", defaultPort), "UDP port to listen on, 127.0.0.1 only; must match the plugin's UdpPort (env UNBEATABLE_RPC_PORT)")
+	statusPort := flag.Int("status-port", envInt(status.PortEnv, status.DefaultPort), "port for the read-only status endpoint on 127.0.0.1; 0 turns it off (env "+status.PortEnv+")")
+	configPath := flag.String("config", defaultPath, "settings file")
+
+	// These can also be set in the settings file. Only flags actually given on
+	// the command line override it, so their defaults here are empty.
+	flagKeys := map[string]string{}
+	help := func(key, text string) string {
+		return text + " (env " + config.EnvVars[key] + "; overrides the settings file)"
+	}
+	stringFlag := func(name, key, text string) {
+		flag.String(name, "", help(key, text))
+		flagKeys[name] = key
+	}
+	stringFlag("style", config.KeyStyle, "presence text style: "+strings.Join(presence.StyleNames(), ", ")+"; default "+config.DefaultStyle)
+	stringFlag("client-id", config.KeyClientID, "Discord application ID; default "+config.DefaultClientID)
+	stringFlag("large-image", config.KeyLargeImage, `art asset key for the large image; default "logo", or "drp_icon" with the game's own client ID`)
+	stringFlag("socket", config.KeySocket, "explicit discord-ipc socket path; default is to search")
+	flag.Bool("verbose", false, help(config.KeyVerbose, "log every message and activity"))
+	flagKeys["verbose"] = config.KeyVerbose
 	flag.Parse()
 
 	logger := log.New(os.Stderr, "unbeatable-rpc: ", log.LstdFlags)
 
-	style, err := presence.LookupStyle(*styleName)
+	overrides := config.EnvOverrides(os.Getenv)
+	flag.Visit(func(f *flag.Flag) {
+		if key, ok := flagKeys[f.Name]; ok {
+			overrides[key] = f.Value.String()
+		}
+	})
+
+	d := &daemon{path: *configPath, overrides: overrides, log: logger}
+	u, err := d.load(true)
 	if err != nil {
 		logger.Fatal(err)
-	}
-
-	if *largeImage == "" {
-		*largeImage = "logo"
-		if *clientID == GameClientID {
-			*largeImage = "drp_icon"
-		}
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -55,28 +79,144 @@ func main() {
 	if err != nil {
 		logger.Fatalf("listen on 127.0.0.1:%d: %v", *port, err)
 	}
-	logger.Printf("listening on %s, client ID %s, style %s", conn.LocalAddr(), *clientID, *styleName)
+	cfg := d.current()
+	logger.Printf("listening on %s, client ID %s, style %s", conn.LocalAddr(), cfg.ClientID, cfg.Style)
+	logger.Printf("settings file: %s", d.path)
 
 	states := make(chan presence.State, 64)
-	go receive(ctx, conn, states, logger, *verbose)
+	go receive(ctx, conn, states, logger, &d.verbose)
 
-	var paths []string
-	if *socket != "" {
-		paths = []string{*socket}
-	}
 	m := &presence.Manager{
-		Options: presence.Options{LargeImage: *largeImage, LargeText: "UNBEATABLE", Style: style},
+		Options: u.Options,
 		Log:     logger,
-		Verbose: *verbose,
+		Verbose: u.Verbose,
 		Dial: func(ctx context.Context) (*discordipc.Client, error) {
-			return discordipc.Dial(ctx, *clientID, paths...)
+			cfg := d.current()
+			var paths []string
+			if cfg.Socket != "" {
+				paths = []string{cfg.Socket}
+			}
+			return discordipc.Dial(ctx, cfg.ClientID, paths...)
 		},
 	}
+
+	go config.Watch(ctx, d.path, watchEvery, func() {
+		if u, err := d.load(false); err == nil {
+			m.Apply(u)
+		}
+	})
+
+	if *statusPort != 0 {
+		go serveStatus(ctx, *statusPort, logger, func() status.Response { return d.response(m.Status()) })
+	}
+
 	m.Run(ctx, states)
 	logger.Printf("stopped")
 }
 
-func receive(ctx context.Context, conn *net.UDPConn, out chan<- presence.State, logger *log.Logger, verbose bool) {
+// daemon holds the settings currently in force.
+type daemon struct {
+	path      string
+	overrides config.Overrides
+	log       *log.Logger
+	verbose   atomic.Bool
+
+	mu      sync.Mutex
+	cfg     config.Config
+	fileErr string
+}
+
+// load reads the settings file and works out the settings to use. At start-up
+// a bad flag or environment variable is fatal; a bad file never is: at
+// start-up its bad parts fall back to defaults, and on reload the previous
+// settings are kept.
+func (d *daemon) load(initial bool) (presence.Update, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	prev := d.cfg
+
+	file, fileErr := config.Read(d.path)
+	if fileErr != nil && !initial {
+		d.fileErr = fileErr.Error()
+		d.log.Printf("settings file not reloaded: %v", fileErr)
+		return presence.Update{}, fileErr
+	}
+	cfg, err := config.Resolve(file, d.overrides)
+	if err != nil {
+		return presence.Update{}, err
+	}
+
+	style, styleErr := presence.LookupStyle(cfg.Style)
+	if styleErr != nil {
+		if _, fromOverride := d.overrides[config.KeyStyle]; fromOverride {
+			return presence.Update{}, styleErr
+		}
+		fallback := config.DefaultStyle
+		if !initial {
+			fallback = prev.Style
+		}
+		d.log.Printf("settings file: %v; using %s", styleErr, fallback)
+		cfg.Style = fallback
+		style, _ = presence.LookupStyle(fallback)
+	}
+
+	d.fileErr = ""
+	switch {
+	case fileErr != nil:
+		d.fileErr = fileErr.Error()
+		d.log.Printf("ignoring settings file: %v", fileErr)
+	case styleErr != nil:
+		d.fileErr = styleErr.Error()
+	}
+
+	d.cfg = cfg
+	d.verbose.Store(cfg.Verbose)
+	if !initial {
+		d.log.Printf("settings reloaded: style %s, client ID %s", cfg.Style, cfg.ClientID)
+	}
+	return presence.Update{
+		Options:   presence.Options{LargeImage: cfg.EffectiveLargeImage(), LargeText: largeText, Style: style},
+		Verbose:   cfg.Verbose,
+		Reconnect: !initial && (cfg.ClientID != prev.ClientID || cfg.Socket != prev.Socket),
+	}, nil
+}
+
+func (d *daemon) current() config.Config {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.cfg
+}
+
+func (d *daemon) response(s presence.Status) status.Response {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return status.Response{
+		Version:     version,
+		ConfigPath:  d.path,
+		Config:      d.cfg,
+		Overridden:  d.overrides.Keys(),
+		ConfigError: d.fileErr,
+		Status:      s,
+	}
+}
+
+func serveStatus(ctx context.Context, port int, logger *log.Logger, get func() status.Response) {
+	ln, err := net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+	if err != nil {
+		logger.Printf("status endpoint off: %v", err)
+		return
+	}
+	srv := &http.Server{Handler: status.Handler(get), ReadHeaderTimeout: 5 * time.Second}
+	go func() {
+		<-ctx.Done()
+		srv.Close()
+	}()
+	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		logger.Printf("status endpoint: %v", err)
+	}
+}
+
+func receive(ctx context.Context, conn *net.UDPConn, out chan<- presence.State, logger *log.Logger, verbose *atomic.Bool) {
 	go func() {
 		<-ctx.Done()
 		conn.Close()
@@ -90,7 +230,7 @@ func receive(ctx context.Context, conn *net.UDPConn, out chan<- presence.State, 
 			}
 			return
 		}
-		if verbose {
+		if verbose.Load() {
 			logger.Printf("received %s", buf[:n])
 		}
 		s, err := presence.ParseState(buf[:n])
@@ -106,13 +246,6 @@ func receive(ctx context.Context, conn *net.UDPConn, out chan<- presence.State, 
 	}
 }
 
-func envOr(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
-}
-
 func envInt(key string, def int) int {
 	v := os.Getenv(key)
 	if v == "" {
@@ -124,9 +257,4 @@ func envInt(key string, def int) int {
 		return def
 	}
 	return n
-}
-
-func envBool(key string) bool {
-	b, _ := strconv.ParseBool(os.Getenv(key))
-	return b
 }

@@ -27,7 +27,7 @@ plugin-dist: plugin
 	install -Dm644 plugin/bin/Release/UnbeatableRPC.dll "$(PLUGIN_DIST)"
 
 daemon:
-	CGO_ENABLED=0 $(GO) build -trimpath -ldflags="-s -w" -o bin/unbeatable-rpc ./daemon/cmd/unbeatable-rpc
+	CGO_ENABLED=0 $(GO) build -trimpath -ldflags="-s -w -X main.version=$(VERSION)" -o bin/unbeatable-rpc ./daemon/cmd/unbeatable-rpc
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags="-s -w" -o bin/fakegame ./daemon/cmd/fakegame
 
 test:

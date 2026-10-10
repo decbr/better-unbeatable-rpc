@@ -111,6 +111,11 @@ func waitFor(t *testing.T, what string, cond func() bool) {
 }
 
 func startManager(t *testing.T, r *ipcRecorder, minInterval, heartbeat time.Duration) chan<- State {
+	_, states := startManagerWith(t, r, minInterval, heartbeat)
+	return states
+}
+
+func startManagerWith(t *testing.T, r *ipcRecorder, minInterval, heartbeat time.Duration) (*Manager, chan<- State) {
 	old := tick
 	tick = 20 * time.Millisecond
 	t.Cleanup(func() { tick = old })
@@ -128,7 +133,7 @@ func startManager(t *testing.T, r *ipcRecorder, minInterval, heartbeat time.Dura
 	done := make(chan struct{})
 	go func() { m.Run(ctx, states); close(done) }()
 	t.Cleanup(func() { cancel(); <-done })
-	return states
+	return m, states
 }
 
 func TestManagerCoalescesToLatest(t *testing.T) {
@@ -188,5 +193,63 @@ func TestManagerResendsAfterReconnect(t *testing.T) {
 	waitFor(t, "re-sent activity on a new connection", func() bool {
 		got, accepts := r.snapshot()
 		return accepts >= 2 && len(got) >= 2 && got[len(got)-1] == "In menus"
+	})
+}
+
+func TestManagerApplyRestylesCurrentState(t *testing.T) {
+	r := newRecorder(t)
+	m, states := startManagerWith(t, r, 10*time.Millisecond, time.Minute)
+
+	states <- State{V: 1, State: StateArcade, Song: "RE-TUNED", Artist: "peak divide"}
+	waitFor(t, "detailed activity", func() bool { got, _ := r.snapshot(); return len(got) == 1 })
+
+	m.Apply(Update{Options: Options{Style: Spotify}})
+	waitFor(t, "restyled activity without a new game message", func() bool { got, _ := r.snapshot(); return len(got) == 2 })
+
+	got, accepts := r.snapshot()
+	if got[0] != "RE-TUNED - peak divide" || got[1] != "RE-TUNED" {
+		t.Errorf("sent %q, want [RE-TUNED - peak divide, RE-TUNED]", got)
+	}
+	if accepts != 1 {
+		t.Errorf("connections = %d, want 1 (a style change shouldn't reconnect)", accepts)
+	}
+}
+
+func TestManagerApplyReconnects(t *testing.T) {
+	r := newRecorder(t)
+	m, states := startManagerWith(t, r, 10*time.Millisecond, time.Minute)
+
+	states <- State{V: 1, State: StateIdle}
+	waitFor(t, "first activity", func() bool { got, _ := r.snapshot(); return len(got) == 1 })
+
+	m.Apply(Update{Reconnect: true})
+	waitFor(t, "second connection", func() bool { _, accepts := r.snapshot(); return accepts == 2 })
+	waitFor(t, "activity resent on the new connection", func() bool {
+		got, _ := r.snapshot()
+		return len(got) >= 2 && got[len(got)-1] == "In menus"
+	})
+}
+
+func TestManagerStatus(t *testing.T) {
+	r := newRecorder(t)
+	m, states := startManagerWith(t, r, 10*time.Millisecond, time.Minute)
+
+	if st := m.Status(); st.GameRunning || st.Discord.Connected || st.Activity != nil {
+		t.Errorf("before any message: %+v", st)
+	}
+
+	states <- State{V: 1, State: StateArcade, Song: "Low"}
+	waitFor(t, "status with activity", func() bool {
+		st := m.Status()
+		return st.GameRunning && st.Discord.Connected && st.Activity != nil && st.Activity.Details == "Low"
+	})
+	if st := m.Status(); st.Discord.Socket != r.path || st.LastHeard == nil {
+		t.Errorf("status = %+v, want socket %s and lastHeard set", st, r.path)
+	}
+
+	states <- State{V: 1, State: StateClosed}
+	waitFor(t, "status after close", func() bool {
+		st := m.Status()
+		return !st.GameRunning && !st.Discord.Connected && st.Activity == nil
 	})
 }

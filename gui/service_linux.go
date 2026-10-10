@@ -41,3 +41,29 @@ func runUninstaller(path string, all bool) (string, error) {
 	out, err := exec.Command(path, args...).CombinedOutput()
 	return string(out), err
 }
+
+// installedGameDir is the game folder the installer used, from its state file.
+// bash sources it, as the installer does, since it's written with printf %q.
+func installedGameDir() string {
+	state := filepath.Join(os.Getenv("HOME"), ".local", "state", "unbeatable-rpc", "install.env")
+	if dir := os.Getenv("XDG_STATE_HOME"); dir != "" {
+		state = filepath.Join(dir, "unbeatable-rpc", "install.env")
+	}
+	if _, err := os.Stat(state); err != nil {
+		return ""
+	}
+	out, err := exec.Command("bash", "-c", `source "$1" && printf %s "$GAME_DIR"`, "_", state).Output()
+	if err != nil {
+		return ""
+	}
+	return string(out)
+}
+
+func openFolder(path string) error {
+	cmd := exec.Command("xdg-open", path)
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("couldn't open %s: %w", path, err)
+	}
+	go cmd.Wait()
+	return nil
+}

@@ -20,7 +20,7 @@ The PB is for the board you're playing on: Classic, Double Time or Half Time. Pr
 ```
 UNBEATABLE (Proton)                         Linux
 ┌─────────────────────────┐   UDP 47820   ┌──────────────────┐  discord-ipc-0  ┌─────────┐
-│ BepInEx + UnbeatableRPC ├──────────────▶│ unbeatable-rpc   ├────────────────▶│ Vesktop │
+│ BepInEx + UnbeatableRPC ├─────────────▶│ unbeatable-rpc   ├───────────────▶│ Vesktop │
 │ (reads game state)      │  JSON, local  │ (daemon, Go)     │   Unix socket   │ (arRPC) │
 └─────────────────────────┘               └──────────────────┘                 └─────────┘
 ```

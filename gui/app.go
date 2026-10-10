@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -82,6 +83,62 @@ func (a *App) Status() DaemonStatus {
 }
 
 func (a *App) StartDaemon() error { return startDaemon() }
+
+type Location struct {
+	Key    string `json:"key"`
+	Label  string `json:"label"`
+	Path   string `json:"path"`
+	Short  string `json:"short"` // Path with the home folder as ~
+	Exists bool   `json:"exists"`
+}
+
+// Locations are the folders worth knowing about. Path is empty when unknown,
+// e.g. the game folder for an install that didn't use install.sh.
+func (a *App) Locations() []Location {
+	game := installedGameDir()
+	under := func(parts ...string) string {
+		if game == "" {
+			return ""
+		}
+		return filepath.Join(append([]string{game}, parts...)...)
+	}
+	programs := ""
+	if self, err := os.Executable(); err == nil {
+		programs = filepath.Dir(self)
+	}
+	locs := []Location{
+		{Key: "plugin", Label: "Mod", Path: under("BepInEx", "plugins", "UnbeatableRPC")},
+		{Key: "bepinex", Label: "BepInEx (logs, config)", Path: under("BepInEx")},
+		{Key: "game", Label: "Game", Path: game},
+		{Key: "settings", Label: "Settings", Path: filepath.Dir(a.configPath())},
+		{Key: "programs", Label: "Programs", Path: programs},
+	}
+	home, _ := os.UserHomeDir()
+	for i := range locs {
+		if locs[i].Path != "" {
+			_, err := os.Stat(locs[i].Path)
+			locs[i].Exists = err == nil
+			locs[i].Short = locs[i].Path
+			if rel, err := filepath.Rel(home, locs[i].Path); home != "" && err == nil && !strings.HasPrefix(rel, "..") {
+				locs[i].Short = filepath.Join("~", rel)
+			}
+		}
+	}
+	return locs
+}
+
+// Browse opens one of Locations in the file manager.
+func (a *App) Browse(key string) error {
+	for _, l := range a.Locations() {
+		if l.Key == key {
+			if !l.Exists {
+				return fmt.Errorf("%s doesn't exist", l.Path)
+			}
+			return openFolder(l.Path)
+		}
+	}
+	return fmt.Errorf("unknown location %q", key)
+}
 
 // Uninstall asks for confirmation, runs the installed uninstaller and quits.
 // It returns false if the user cancelled.

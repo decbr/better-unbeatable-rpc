@@ -11,3 +11,7 @@ func startDaemon() error { return errUnsupported }
 func uninstallerPath() (string, error) { return "", errUnsupported }
 
 func runUninstaller(string, bool) (string, error) { return "", errUnsupported }
+
+func installedGameDir() string { return "" }
+
+func openFolder(string) error { return errUnsupported }

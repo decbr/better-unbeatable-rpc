@@ -4,6 +4,7 @@ import (
 	"context"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -76,5 +77,47 @@ func TestRunUninstaller(t *testing.T) {
 	}
 	if got := lastLines("a\nb\nc\nd\n", 2); got != "c\nd" {
 		t.Errorf("lastLines = %q", got)
+	}
+}
+
+func TestInstalledGameDirReadsInstallerState(t *testing.T) {
+	state := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", state)
+	if got := installedGameDir(); got != "" {
+		t.Errorf("no state file: got %q, want empty", got)
+	}
+	// the installer writes it with printf %q, which escapes spaces and quotes
+	game := filepath.Join(t.TempDir(), "Steam Library", "it's UNBEATABLE")
+	os.MkdirAll(filepath.Join(state, "unbeatable-rpc"), 0o755)
+	script := `printf 'GAME_DIR=%q\nSERVICE=%q\n' "$1" true >"$2"`
+	if err := exec.Command("bash", "-c", script, "_", game, filepath.Join(state, "unbeatable-rpc", "install.env")).Run(); err != nil {
+		t.Fatal(err)
+	}
+	if got := installedGameDir(); got != game {
+		t.Errorf("got %q, want %q", got, game)
+	}
+}
+
+func TestLocations(t *testing.T) {
+	a := newTestApp(t)
+	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	byKey := map[string]Location{}
+	for _, l := range a.Locations() {
+		byKey[l.Key] = l
+	}
+	if l := byKey["game"]; l.Path != "" || l.Exists {
+		t.Errorf("game without installer state = %+v, want unknown", l)
+	}
+	if l := byKey["plugin"]; l.Path != "" {
+		t.Errorf("plugin without a game folder = %+v", l)
+	}
+	if l := byKey["settings"]; l.Path == "" {
+		t.Error("settings folder missing")
+	}
+	if err := a.Browse("nope"); err == nil {
+		t.Error("Browse accepted an unknown key")
+	}
+	if err := a.Browse("game"); err == nil {
+		t.Error("Browse opened a folder that doesn't exist")
 	}
 }

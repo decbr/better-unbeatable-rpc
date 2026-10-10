@@ -142,6 +142,27 @@ button {
 }
 button:disabled { opacity: .6; cursor: default; }
 button.danger { background: var(--bad); justify-self: start; }
+button.quiet { background: var(--raised); color: var(--text); padding: 4px 10px; font-size: 13px; }
+
+.locations { display: grid; gap: 10px; }
+.location {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 12px;
+  align-items: center;
+}
+.location-text { min-width: 0; }
+/* long paths lose their start, not their end: right-to-left overflow */
+.location-text code {
+  display: block;
+  font-size: 12px;
+  color: var(--dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl;
+  text-align: left;
+}
 
 .uninstall {
   display: grid;

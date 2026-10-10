@@ -48,6 +48,14 @@
       <div id="styles"></div>
     </section>
 
+    <section class="card">
+      <header>
+        <h2>Files</h2>
+      </header>
+      <div class="locations" id="locations"></div>
+      <p class="error" id="browse-error" hidden></p>
+    </section>
+
     <details class="card">
       <summary><h2>Advanced</h2></summary>
       <form id="advanced">
@@ -64,7 +72,6 @@
           <input type="checkbox" name="verbose"> Verbose logging
         </label>
       </form>
-      <p class="dim small">Settings file: <code id="config-path"></code></p>
       <p class="dim small" id="daemon-version" hidden></p>
       <div class="uninstall">
         <label class="check">

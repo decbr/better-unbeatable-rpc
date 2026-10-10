@@ -72,7 +72,6 @@ function renderAdvanced() {
   form.clientId.placeholder = view.defaults.clientId;
   form.socket.value = file.socket || "";
   form.verbose.checked = !!file.verbose;
-  $("config-path").textContent = view.configPath;
   applyLocks();
 }
 
@@ -236,6 +235,42 @@ $("uninstall").addEventListener("click", async () => {
   }
 });
 
+async function renderLocations() {
+  const box = $("locations");
+  box.replaceChildren();
+  for (const loc of await api().Locations()) {
+    const text = document.createElement("div");
+    text.className = "location-text";
+    const label = document.createElement("div");
+    label.textContent = loc.label;
+    const path = document.createElement("code");
+    // the bdi keeps the path's own order inside the right-to-left overflow trick
+    const bdi = document.createElement("bdi");
+    bdi.textContent = loc.path ? loc.short + (loc.exists ? "" : " (not found)") : "not found";
+    path.append(bdi);
+    path.title = loc.path;
+    text.append(label, path);
+    const browse = document.createElement("button");
+    browse.className = "quiet";
+    browse.textContent = "Browse";
+    browse.disabled = !loc.exists;
+    browse.addEventListener("click", async () => {
+      const err = $("browse-error");
+      err.hidden = true;
+      try {
+        await api().Browse(loc.key);
+      } catch (e) {
+        err.textContent = String(e);
+        err.hidden = false;
+      }
+    });
+    const row = document.createElement("div");
+    row.className = "location";
+    row.append(text, browse);
+    box.append(row);
+  }
+}
+
 /* start */
 
 (async () => {
@@ -244,6 +279,7 @@ $("uninstall").addEventListener("click", async () => {
   file = { ...view.file };
   renderStyles();
   renderAdvanced();
+  renderLocations();
   if (view.fileError) {
     $("config-error").textContent = "Settings file problem: " + view.fileError;
     $("config-error").hidden = false;

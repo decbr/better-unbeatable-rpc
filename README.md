@@ -71,6 +71,8 @@ Click a piece to give it text before and after, like ` - ` before `artist`. A pi
 
 **Edit as text** shows the lines as templates, which is what's saved: `{title}[ - {artist}]` is a title and an artist piece, square brackets marking what's left out together, and `[PB: {pb}|No PB yet]` shows what's after the `|` when there's no PB. Write `\[`, `\]`, `\{`, `\}`, `\|` or `\\` for the character itself. Results falls back to Song and a story-mode song to Story when left empty; Story and Menus fall back to `detailed`.
 
+To share a style, **Copy** puts it on your clipboard as text to paste anywhere, and **Save…** writes it to a `.json` file. **Import** takes either: paste the text (a chat message around it is fine) or open the file. It opens in the editor so you can check it before saving.
+
 Without the app, edit `~/.config/unbeatable-rpc/config.json`:
 ```json
 {"style": "spotify"}

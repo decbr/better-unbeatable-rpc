@@ -139,9 +139,22 @@
     <section class="card">
       <header>
         <h2>Custom</h2>
-        <button class="quiet" id="new-style">New style</button>
+        <div class="header-buttons">
+          <button class="quiet" id="import-style">Import</button>
+          <button class="quiet" id="new-style">New style</button>
+        </div>
       </header>
+      <div class="import" id="import" hidden>
+        <textarea id="import-text" placeholder="Paste a style someone shared" spellcheck="false"></textarea>
+        <div class="controls">
+          <button id="import-paste">Import</button>
+          <button class="quiet" id="import-file">Open file…</button>
+          <button class="quiet" id="import-cancel">Cancel</button>
+        </div>
+        <p class="error" id="import-error" hidden></p>
+      </div>
       <div id="styles-custom"></div>
+      <p class="error" id="custom-error" hidden></p>
       <p class="dim small" id="custom-empty">None yet. Make one from scratch, or duplicate a built-in style below.</p>
     </section>
 

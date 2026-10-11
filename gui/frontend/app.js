@@ -86,6 +86,8 @@ function renderStyles() {
     if (s.custom) {
       actions.append(
         actionButton("Edit", () => openEditor(s.template, s.name)),
+        actionButton("Copy", (btn) => copyStyle(s.template, btn)),
+        actionButton("Save…", (btn) => saveStyleFile(s.template, btn)),
         actionButton("Delete", (btn) => {
           if (btn.dataset.armed) return deleteCustom(s.name);
           btn.dataset.armed = "1";
@@ -210,12 +212,81 @@ function customStyles() {
   return file.customStyles || [];
 }
 
-function copyName(base) {
-  const taken = new Set([...view.styles.map((s) => s.name.toLowerCase())]);
-  let name = base + " copy";
-  for (let i = 2; taken.has(name.toLowerCase()); i++) name = `${base} copy ${i}`;
-  return name;
+// freeName is name, or name with a number when a style already has it.
+function freeName(name) {
+  const taken = new Set(view.styles.map((s) => s.name.toLowerCase()));
+  let free = name;
+  for (let i = 2; taken.has(free.toLowerCase()); i++) free = `${name} ${i}`;
+  return free;
 }
+
+function copyName(base) {
+  return freeName(base + " copy");
+}
+
+/* sharing: a style is JSON text, to paste in a chat or save as a file */
+
+function showCustomError(e) {
+  const err = $("custom-error");
+  err.textContent = e ? String(e) : "";
+  err.hidden = !e;
+}
+
+function flash(btn, text) {
+  const was = btn.textContent;
+  btn.textContent = text;
+  setTimeout(() => (btn.textContent = was), 1500);
+}
+
+async function copyStyle(style, btn) {
+  showCustomError(null);
+  try {
+    await api().CopyText(await api().ExportStyle(style));
+    flash(btn, "Copied");
+  } catch (e) {
+    showCustomError("Couldn't copy it: " + e + ". Save… puts it in a file instead.");
+  }
+}
+
+async function saveStyleFile(style, btn) {
+  showCustomError(null);
+  try {
+    if (await api().SaveStyleFile(style)) flash(btn, "Saved");
+  } catch (e) {
+    showCustomError(e);
+  }
+}
+
+function showImport(open) {
+  $("import").hidden = !open;
+  $("import-error").hidden = true;
+  $("import-text").value = "";
+  if (open) $("import-text").focus();
+}
+
+// imported opens a shared style in the editor, to look at before saving it.
+function imported(style) {
+  showImport(false);
+  openEditor({ ...style, name: freeName(style.name || "imported") }, null);
+  $("editor-title").textContent = "Import " + (style.name || "style");
+}
+
+async function importFrom(read) {
+  const err = $("import-error");
+  err.hidden = true;
+  try {
+    const style = await read();
+    if (style) imported(style);
+  } catch (e) {
+    err.textContent = String(e);
+    err.hidden = false;
+  }
+}
+
+$("import-style").addEventListener("click", () => showImport($("import").hidden));
+$("import-cancel").addEventListener("click", () => showImport(false));
+$("import-paste").addEventListener("click", () => importFrom(() => api().ImportStyle($("import-text").value)));
+$("import-file").addEventListener("click", () => importFrom(() => api().OpenStyleFile()));
 
 function schedulePreview() {
   clearTimeout(previewTimer);

@@ -14,3 +14,11 @@ func Spotify(s State) (details, state string) {
 		return "In menus", starsLine(s)
 	}
 }
+
+var spotifyTemplate = CustomStyle{
+	Name:      "spotify",
+	Song:      Template{"{title}", "{artist}"},
+	StorySong: Template{"{title}", "{artist}"},
+	Story:     Template{"Story mode", "{chapter}"},
+	Menus:     Template{"In menus", "[★ {stars}]"},
+}

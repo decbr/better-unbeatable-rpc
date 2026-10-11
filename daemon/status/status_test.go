@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strconv"
 	"testing"
 
@@ -34,7 +35,7 @@ func TestFetchRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Version != want.Version || got.Config != want.Config || len(got.Overridden) != 1 ||
+	if got.Version != want.Version || !reflect.DeepEqual(got.Config, want.Config) || len(got.Overridden) != 1 ||
 		!got.GameRunning || got.Discord != want.Discord || got.Activity == nil || *got.Activity != *want.Activity {
 		t.Errorf("got %+v, want %+v", got, want)
 	}

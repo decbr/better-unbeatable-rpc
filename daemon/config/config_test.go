@@ -12,7 +12,7 @@ import (
 
 func TestReadMissingFileIsEmpty(t *testing.T) {
 	c, err := Read(filepath.Join(t.TempDir(), "nope.json"))
-	if err != nil || c != (Config{}) {
+	if err != nil || !reflect.DeepEqual(c, Config{}) {
 		t.Errorf("got %+v, %v; want empty config, nil", c, err)
 	}
 }
@@ -32,7 +32,7 @@ func TestSaveRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	got, err := Read(path)
-	if err != nil || got != want {
+	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, %v; want %+v", got, err, want)
 	}
 	entries, _ := os.ReadDir(filepath.Dir(path))
@@ -48,11 +48,11 @@ func TestResolvePrecedence(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Config{Style: "spotify", ClientID: "222", Socket: "/file", Verbose: false}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
 
-	if got, _ := Resolve(Config{}, nil); got != Defaults() {
+	if got, _ := Resolve(Config{}, nil); !reflect.DeepEqual(got, Defaults()) {
 		t.Errorf("empty file: got %+v, want defaults %+v", got, Defaults())
 	}
 	if _, err := Resolve(Config{}, Overrides{KeyVerbose: "maybe"}); err == nil {

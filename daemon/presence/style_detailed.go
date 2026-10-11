@@ -80,3 +80,13 @@ func thousands(n int) string {
 	}
 	return b.String()
 }
+
+var detailedTemplate = CustomStyle{
+	Name:    "detailed",
+	Song:    Template{"{title}[ - {artist}]", detailedChart},
+	Results: Template{"Results: {title}[ - {artist}]", detailedChart},
+	Story:   Template{"Story mode[ - {chapter}]", "[★ {stars}]"},
+	Menus:   Template{"In menus", "[★ {stars}]"},
+}
+
+const detailedChart = "[{difficulty}[ Lv {level}] · |Lv {level} · ][PB: {pb}[ ({rank})]|No PB yet]"

@@ -150,18 +150,18 @@ func TestSpotifyStyle(t *testing.T) {
 }
 
 func TestLookupStyle(t *testing.T) {
-	if _, err := LookupStyle(DefaultStyle); err != nil {
+	if _, err := LookupStyle(DefaultStyle, nil); err != nil {
 		t.Fatalf("default style %q is not registered", DefaultStyle)
 	}
 	for _, name := range StyleNames() {
-		if _, err := LookupStyle(name); err != nil {
+		if _, err := LookupStyle(name, nil); err != nil {
 			t.Errorf("LookupStyle(%q): %v", name, err)
 		}
 	}
-	if _, err := LookupStyle("Spotify"); err != nil {
+	if _, err := LookupStyle("Spotify", nil); err != nil {
 		t.Errorf("lookup should ignore case: %v", err)
 	}
-	if _, err := LookupStyle("nope"); err == nil {
+	if _, err := LookupStyle("nope", nil); err == nil {
 		t.Error("LookupStyle(nope) succeeded, want error")
 	}
 }

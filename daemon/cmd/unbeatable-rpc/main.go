@@ -49,7 +49,7 @@ func main() {
 		flag.String(name, "", help(key, text))
 		flagKeys[name] = key
 	}
-	stringFlag("style", config.KeyStyle, "presence text style: "+strings.Join(presence.StyleNames(), ", ")+"; default "+config.DefaultStyle)
+	stringFlag("style", config.KeyStyle, "presence text style: "+strings.Join(presence.StyleNames(), ", ")+" or a custom style's name; default "+config.DefaultStyle)
 	stringFlag("client-id", config.KeyClientID, "Discord application ID; default "+config.DefaultClientID)
 	stringFlag("large-image", config.KeyLargeImage, `art asset key for the large image; default "logo", or "drp_icon" with the game's own client ID`)
 	stringFlag("socket", config.KeySocket, "explicit discord-ipc socket path; default is to search")
@@ -147,18 +147,23 @@ func (d *daemon) load(initial bool) (presence.Update, error) {
 		return presence.Update{}, err
 	}
 
-	style, styleErr := presence.LookupStyle(cfg.Style)
+	style, styleErr := presence.LookupStyle(cfg.Style, cfg.CustomStyles)
 	if styleErr != nil {
 		if _, fromOverride := d.overrides[config.KeyStyle]; fromOverride {
 			return presence.Update{}, styleErr
 		}
-		fallback := config.DefaultStyle
+		// the previous style as it was, even if the file has since broken or
+		// deleted it
+		fallback, fallbackCustom := config.DefaultStyle, []presence.CustomStyle(nil)
 		if !initial {
-			fallback = prev.Style
+			fallback, fallbackCustom = prev.Style, prev.CustomStyles
+		}
+		if style, err = presence.LookupStyle(fallback, fallbackCustom); err != nil {
+			fallback = config.DefaultStyle
+			style, _ = presence.LookupStyle(fallback, nil)
 		}
 		d.log.Printf("settings file: %v; using %s", styleErr, fallback)
 		cfg.Style = fallback
-		style, _ = presence.LookupStyle(fallback)
 	}
 
 	d.fileErr = ""

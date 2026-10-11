@@ -32,3 +32,13 @@ func osuLine(s State) string {
 	}
 	return line
 }
+
+var osuTemplate = CustomStyle{
+	Name:      "osu",
+	Song:      Template{osuTemplateLine, osuActivity},
+	StorySong: Template{osuTemplateLine, osuActivity},
+	Story:     Template{"Story mode", "{chapter}"},
+	Menus:     Template{"In menus", "[★ {stars}]"},
+}
+
+const osuTemplateLine = `[{artist} - ]{title}[ ({charter})][ \[{difficulty}\]]`

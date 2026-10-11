@@ -35,6 +35,8 @@ type Config struct {
 	Verbose    bool   `json:"verbose,omitempty"`
 	// Hidden keeps the game off Discord without closing it.
 	Hidden bool `json:"hidden,omitempty"`
+	// CustomStyles are styles made in the settings app; Style can name one.
+	CustomStyles []presence.CustomStyle `json:"customStyles,omitempty"`
 }
 
 // Keys and the environment variable that overrides each one.
@@ -161,6 +163,7 @@ func Resolve(file Config, o Overrides) (Config, error) {
 	}
 	c.Verbose = file.Verbose
 	c.Hidden = file.Hidden
+	c.CustomStyles = file.CustomStyles
 
 	for key, v := range o {
 		switch key {

@@ -7,7 +7,12 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="status">Status</button>
+    <button class="tab" role="tab" data-tab="styles">Styles</button>
+    <span class="saved" id="saved" hidden>Saved</span>
+  </nav>
+  <main id="tab-status" role="tabpanel">
     <section class="card" id="status">
       <header>
         <h2>Status</h2>
@@ -50,15 +55,6 @@
       <p class="dim small">Copy diagnostics includes file paths; paste it into a GitHub issue when reporting a problem.</p>
       <p class="error" id="diagnostics-error" hidden></p>
       <textarea class="diagnostics" id="diagnostics-text" readonly hidden></textarea>
-    </section>
-
-    <section class="card">
-      <header>
-        <h2>Style</h2>
-        <span class="saved" id="saved" hidden>Saved</span>
-      </header>
-      <p class="note" id="style-locked" hidden></p>
-      <div id="styles"></div>
     </section>
 
     <section class="card">
@@ -110,6 +106,53 @@
       </div>
     </details>
   </main>
+
+  <main id="tab-styles" role="tabpanel" hidden>
+    <p class="note" id="style-locked" hidden></p>
+
+    <section class="card" id="editor" hidden>
+      <header>
+        <h2 id="editor-title">New style</h2>
+      </header>
+      <form id="editor-form">
+        <label>Name
+          <input id="editor-name" maxlength="40" autocomplete="off">
+        </label>
+        <div class="chips" id="chips"></div>
+        <p class="dim small" id="help-pieces">Drag a piece into a line, or click it to add it to the highlighted line.
+          Click a piece in a line to change it. A piece is left out when its information is missing, along with the text before and after it.</p>
+        <p class="dim small" id="help-text" hidden>Click a placeholder to insert it.
+          Text in [square brackets] is left out when a placeholder in it is empty; [a|b] shows b instead.
+          Write \[ for a bracket itself.</p>
+        <label class="check small-check"><input type="checkbox" id="editor-text-mode"> Edit as text</label>
+        <div class="parts" id="parts"></div>
+      </form>
+      <h3>Preview</h3>
+      <div id="editor-preview"></div>
+      <p class="error" id="editor-error" hidden></p>
+      <div class="controls">
+        <button id="editor-save">Save</button>
+        <button class="quiet" id="editor-cancel">Cancel</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <header>
+        <h2>Custom</h2>
+        <button class="quiet" id="new-style">New style</button>
+      </header>
+      <div id="styles-custom"></div>
+      <p class="dim small" id="custom-empty">None yet. Make one from scratch, or duplicate a built-in style below.</p>
+    </section>
+
+    <section class="card">
+      <header>
+        <h2>Built-in</h2>
+      </header>
+      <div id="styles-builtin"></div>
+    </section>
+  </main>
+  <script src="pieces.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

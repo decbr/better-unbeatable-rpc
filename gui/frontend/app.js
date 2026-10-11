@@ -25,13 +25,49 @@ async function waitForBindings() {
 
 /* settings */
 
-function renderStyles() {
-  const box = $("styles");
-  box.replaceChildren();
+function previewRows(previews) {
+  return previews.map((p) => {
+    const row = document.createElement("div");
+    row.className = "preview";
+    const where = document.createElement("div");
+    where.className = "preview-where";
+    where.textContent = p.where;
+    const details = document.createElement("div");
+    details.className = "presence-line";
+    details.textContent = p.details || " ";
+    const state = document.createElement("div");
+    state.className = "presence-line";
+    state.textContent = p.state || " ";
+    row.append(where, details, state);
+    return row;
+  });
+}
+
+function actionButton(text, onClick) {
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "quiet";
+  btn.textContent = text;
+  btn.addEventListener("click", (e) => {
+    e.preventDefault(); // it's inside the card's label: don't pick the style too
+    onClick(btn);
+  });
+  return btn;
+}
+
+function currentStyle() {
   // A locked style shows what's in force, not what the file says.
-  const current = overridden.includes("style") && effective
+  return overridden.includes("style") && effective
     ? effective.style
     : file.style || view.defaults.style;
+}
+
+function renderStyles() {
+  const builtins = $("styles-builtin");
+  const customs = $("styles-custom");
+  builtins.replaceChildren();
+  customs.replaceChildren();
+  const current = currentStyle().toLowerCase();
   for (const s of view.styles) {
     const label = document.createElement("label");
     label.className = "style";
@@ -42,28 +78,40 @@ function renderStyles() {
     radio.type = "radio";
     radio.name = "style";
     radio.value = s.name;
-    radio.checked = s.name === current;
+    radio.checked = s.name.toLowerCase() === current;
+    radio.dataset.broken = s.error ? "1" : "";
     radio.addEventListener("change", () => save({ style: s.name }));
-    name.append(radio, s.name + (s.name === view.defaults.style ? " (default)" : ""));
+    const actions = document.createElement("span");
+    actions.className = "style-actions";
+    if (s.custom) {
+      actions.append(
+        actionButton("Edit", () => openEditor(s.template, s.name)),
+        actionButton("Delete", (btn) => {
+          if (btn.dataset.armed) return deleteCustom(s.name);
+          btn.dataset.armed = "1";
+          btn.textContent = "Really delete?";
+          setTimeout(() => {
+            delete btn.dataset.armed;
+            btn.textContent = "Delete";
+          }, 3000);
+        }),
+      );
+    } else {
+      actions.append(actionButton("Duplicate", () => openEditor({ ...s.template, name: copyName(s.name) }, null)));
+    }
+    name.append(radio, s.name + (s.name === view.defaults.style ? " (default)" : ""), actions);
     label.append(name);
 
-    for (const p of s.previews) {
-      const row = document.createElement("div");
-      row.className = "preview";
-      const where = document.createElement("div");
-      where.className = "preview-where";
-      where.textContent = p.where;
-      const details = document.createElement("div");
-      details.className = "presence-line";
-      details.textContent = p.details;
-      const state = document.createElement("div");
-      state.className = "presence-line";
-      state.textContent = p.state || " ";
-      row.append(where, details, state);
-      label.append(row);
+    if (s.error) {
+      const err = document.createElement("p");
+      err.className = "error small";
+      err.textContent = s.error;
+      label.append(err);
     }
-    box.append(label);
+    label.append(...previewRows(s.previews || []));
+    (s.custom ? customs : builtins).append(label);
   }
+  $("custom-empty").hidden = customs.childElementCount > 0;
   applyLocks();
 }
 
@@ -85,7 +133,7 @@ function renderShowSwitch() {
 
 function applyLocks() {
   const styleLocked = overridden.includes("style");
-  for (const r of document.querySelectorAll('input[name="style"]')) r.disabled = styleLocked;
+  for (const r of document.querySelectorAll('input[name="style"]')) r.disabled = styleLocked || !!r.dataset.broken;
   const note = $("style-locked");
   note.hidden = !styleLocked;
   if (styleLocked) {
@@ -105,17 +153,23 @@ function applyLocks() {
 
 let savedTimer = 0;
 
-async function save(change) {
-  file = { ...file, ...change };
-  for (const k of Object.keys(file)) {
-    if (file[k] === "" || file[k] === false) delete file[k];
+// saveFile writes the settings with change applied; it throws if it can't.
+async function saveFile(change) {
+  const next = { ...file, ...change };
+  for (const k of Object.keys(next)) {
+    if (next[k] === "" || next[k] === false || (Array.isArray(next[k]) && next[k].length === 0)) delete next[k];
   }
+  await api().Save(next);
+  file = next;
+  const saved = $("saved");
+  saved.hidden = false;
+  clearTimeout(savedTimer);
+  savedTimer = setTimeout(() => (saved.hidden = true), 1500);
+}
+
+async function save(change) {
   try {
-    await api().Save(file);
-    const saved = $("saved");
-    saved.hidden = false;
-    clearTimeout(savedTimer);
-    savedTimer = setTimeout(() => (saved.hidden = true), 1500);
+    await saveFile(change);
   } catch (err) {
     alert("Couldn't save the settings: " + err);
   }
@@ -127,6 +181,491 @@ $("advanced").addEventListener("change", (e) => {
   const input = e.target;
   save({ [input.name]: input.type === "checkbox" ? input.checked : input.value.trim() });
 });
+
+/* custom styles */
+
+const PARTS = [
+  ["song", "Song", ""],
+  ["results", "Results", "Empty: same as Song"],
+  ["storySong", "Story song", "A song in story mode. Empty: same as Story"],
+  ["story", "Story", "Empty: as the detailed style"],
+  ["menus", "Menus", "Empty: as the detailed style"],
+];
+
+const LINES = [["details", "First line"], ["state", "Second line"]];
+
+let editing = null; // the name of the custom style being edited, or "" for a new one
+let lines = {}; // by "part.line": {text, pieces}; pieces is null for a line only text can show
+let textMode = false; // edit every line as template text
+let activeLine = "song.details"; // where a clicked piece in the palette goes
+let selected = null; // {key, index}: the piece whose settings are open
+let lastInput = null; // in text mode, the line a clicked placeholder goes into
+let previewTimer = 0;
+
+try {
+  textMode = localStorage.getItem("textMode") === "1";
+} catch {}
+
+function customStyles() {
+  return file.customStyles || [];
+}
+
+function copyName(base) {
+  const taken = new Set([...view.styles.map((s) => s.name.toLowerCase())]);
+  let name = base + " copy";
+  for (let i = 2; taken.has(name.toLowerCase()); i++) name = `${base} copy ${i}`;
+  return name;
+}
+
+function schedulePreview() {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(updatePreview, 150);
+}
+
+function el(tag, className, text) {
+  const e = document.createElement(tag);
+  if (className) e.className = className;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+function renderEditorParts() {
+  const box = $("parts");
+  box.replaceChildren();
+  for (const [key, title, hint] of PARTS) {
+    const part = el("details", "part");
+    part.dataset.part = key;
+    const summary = el("summary", "", title);
+    if (hint) summary.append(" ", el("span", "dim small", hint));
+    const body = el("div", "part-lines");
+    for (const [line, label] of LINES) {
+      const wrap = el("div", "line-wrap");
+      wrap.dataset.key = `${key}.${line}`;
+      wrap.append(el("div", "line-label", label), el("div", "line-body"));
+      body.append(wrap);
+    }
+    part.append(summary, body);
+    box.append(part);
+  }
+}
+
+/* the editor: pieces */
+
+function sync(key) {
+  lines[key].text = piecesToTemplate(lines[key].pieces);
+  schedulePreview();
+}
+
+function renderLine(key) {
+  const body = document.querySelector(`.line-wrap[data-key="${key}"] .line-body`);
+  const line = lines[key];
+  if (textMode || !line.pieces) {
+    const input = el("input", "template");
+    input.value = line.text;
+    input.spellcheck = false;
+    input.autocomplete = "off";
+    input.addEventListener("input", () => {
+      line.text = input.value;
+      schedulePreview();
+    });
+    input.addEventListener("focus", () => (lastInput = input));
+    body.replaceChildren(input);
+    if (!textMode) {
+      const note = el("p", "dim small line-note", "This line uses brackets inside brackets, so it can only be edited as text. ");
+      const restart = el("button", "quiet", "Start it again with pieces");
+      restart.type = "button";
+      restart.addEventListener("click", () => {
+        line.pieces = [];
+        sync(key);
+        activeLine = key;
+        renderLine(key);
+      });
+      note.append(restart);
+      body.append(note);
+    }
+    return;
+  }
+  body.replaceChildren(pieceRow(key));
+  if (selected && selected.key === key && line.pieces[selected.index]) body.append(pieceSettings(key, selected.index));
+}
+
+function renderRow(key) {
+  const row = document.querySelector(`.line[data-key="${key}"]`);
+  if (row) row.replaceWith(pieceRow(key));
+}
+
+function renderAllLines() {
+  for (const key of Object.keys(lines)) renderLine(key);
+  $("palette-text").hidden = textMode;
+  $("help-pieces").hidden = textMode;
+  $("help-text").hidden = !textMode;
+  $("editor-text-mode").checked = textMode;
+}
+
+function pieceRow(key) {
+  const row = el("div", "line");
+  row.dataset.key = key;
+  row.classList.toggle("active", key === activeLine);
+  lines[key].pieces.forEach((p, i) => row.append(pieceChip(key, p, i)));
+  if (!lines[key].pieces.length) row.append(el("span", "line-empty", "Empty. Drag pieces here."));
+  row.addEventListener("click", (e) => {
+    if (e.target === row || e.target.classList.contains("line-empty")) setActive(key);
+  });
+  return row;
+}
+
+function pieceChip(key, p, i) {
+  const chip = el("button", "piece " + (p.field ? "field" : "text"));
+  chip.type = "button";
+  chip.classList.toggle("selected", !!selected && selected.key === key && selected.index === i);
+  if (p.field) {
+    if (p.before) chip.append(el("span", "piece-extra", p.before));
+    chip.append(el("span", "piece-name", p.field));
+    if (p.after) chip.append(el("span", "piece-extra", p.after));
+    if (p.fallback) chip.append(el("span", "piece-fallback", "or " + p.fallback));
+  } else {
+    chip.append(el("span", p.text ? "piece-extra" : "piece-fallback", p.text || "text"));
+  }
+  chip.title = "Drag to move, click to change";
+  draggable(chip, { key, index: i }, () => select(key, i));
+  return chip;
+}
+
+function setActive(key) {
+  const old = activeLine;
+  activeLine = key;
+  renderRow(old);
+  renderRow(key);
+}
+
+function select(key, index) {
+  const old = selected;
+  selected = old && old.key === key && old.index === index ? null : { key, index };
+  activeLine = key;
+  if (old && old.key !== key) renderLine(old.key);
+  renderLine(key);
+}
+
+function pieceSettings(key, index) {
+  const p = lines[key].pieces[index];
+  const box = el("div", "piece-settings");
+  const field = (label, prop, placeholder) => {
+    const l = el("label", "", label);
+    const input = el("input");
+    input.value = p[prop];
+    input.placeholder = placeholder || "";
+    input.spellcheck = false;
+    input.autocomplete = "off";
+    input.addEventListener("input", () => {
+      p[prop] = input.value;
+      sync(key);
+      renderRow(key);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault(); // the form would save the style
+      select(key, index);
+    });
+    l.append(input);
+    return l;
+  };
+
+  if (p.field) {
+    const l = el("label", "", "Placeholder");
+    const pick = el("select");
+    for (const name of view.placeholders) pick.append(new Option(name, name, false, name === p.field));
+    pick.addEventListener("change", () => {
+      p.field = pick.value;
+      sync(key);
+      renderLine(key);
+    });
+    l.append(pick);
+    box.append(
+      l,
+      field("Text before", "before", "none"),
+      field("Text after", "after", "none"),
+      field(`If there's no ${p.field}, show`, "fallback", "nothing: the piece is left out"),
+    );
+  } else {
+    box.append(field("Text", "text"));
+  }
+
+  const buttons = el("div", "piece-buttons");
+  const button = (text, onClick, disabled) => {
+    const b = el("button", "quiet", text);
+    b.type = "button";
+    b.disabled = !!disabled;
+    b.addEventListener("click", onClick);
+    buttons.append(b);
+  };
+  const pieces = lines[key].pieces;
+  const move = (by) => () => {
+    pieces.splice(index + by, 0, ...pieces.splice(index, 1));
+    selected = { key, index: index + by };
+    sync(key);
+    renderLine(key);
+  };
+  button("Move left", move(-1), index === 0);
+  button("Move right", move(1), index === pieces.length - 1);
+  button("Remove", () => {
+    pieces.splice(index, 1);
+    selected = null;
+    sync(key);
+    renderLine(key);
+  });
+  button("Done", () => select(key, index));
+  box.append(buttons);
+  return box;
+}
+
+function newPiece(source, pieces, index) {
+  if (!source.field) return { text: "" };
+  // a space before it, unless it starts the line or follows one
+  const prev = pieces[index - 1];
+  const prevText = prev ? piecesToTemplate([prev]) : "";
+  const before = index > 0 && !/\s\]?$/.test(prevText) ? " " : "";
+  return { field: source.field, before, after: "", fallback: "" };
+}
+
+function addPiece(source, key, index) {
+  const pieces = lines[key].pieces;
+  pieces.splice(index, 0, source.key ? lines[source.key].pieces.splice(source.index, 1)[0] : newPiece(source, pieces, index));
+  const old = selected;
+  selected = { key, index };
+  activeLine = key;
+  sync(key);
+  if (source.key && source.key !== key) sync(source.key);
+  for (const k of new Set([key, source.key, old && old.key].filter(Boolean))) renderLine(k);
+  $(`parts`).querySelector(`.line-wrap[data-key="${key}"]`).closest("details").open = true;
+  const first = document.querySelector(".piece-settings input");
+  if (first && !source.key && !source.field) first.focus();
+}
+
+function paletteClick(source) {
+  if (textMode) {
+    const input = lastInput || $("parts").querySelector("input.template");
+    if (!input || !source.field) return;
+    input.closest("details").open = true;
+    input.focus();
+    input.setRangeText(`{${source.field}}`, input.selectionStart, input.selectionEnd, "end");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+  if (!lines[activeLine].pieces) return;
+  addPiece(source, activeLine, lines[activeLine].pieces.length);
+}
+
+/* dragging pieces: pointer events, which work the same everywhere */
+
+let drag = null;
+let justDragged = false;
+
+function draggable(chip, source, onClick) {
+  chip.addEventListener("click", () => {
+    if (!justDragged) onClick();
+  });
+  chip.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0 || textMode) return;
+    drag = { source, chip, x: e.clientX, y: e.clientY, ghost: null, target: null };
+    chip.setPointerCapture(e.pointerId);
+  });
+  chip.addEventListener("pointermove", (e) => {
+    if (!drag || drag.chip !== chip) return;
+    if (!drag.ghost) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
+      drag.ghost = chip.cloneNode(true);
+      drag.ghost.classList.add("ghost");
+      document.body.append(drag.ghost);
+      chip.classList.add("dragging");
+    }
+    drag.ghost.style.left = e.clientX + 6 + "px";
+    drag.ghost.style.top = e.clientY + 6 + "px";
+    drag.target = dropTarget(e.clientX, e.clientY);
+    showDropTarget(drag.target);
+  });
+  chip.addEventListener("pointerup", () => {
+    const d = drag;
+    endDrag();
+    if (!d || !d.ghost) return;
+    // the click that follows a drag isn't one
+    justDragged = true;
+    setTimeout(() => (justDragged = false));
+    if (d.target) {
+      let { key, index } = d.target;
+      if (d.source.key === key && d.source.index < index) index--;
+      addPiece(d.source, key, index);
+    }
+  });
+  chip.addEventListener("pointercancel", endDrag);
+}
+
+function endDrag() {
+  if (!drag) return;
+  if (drag.ghost) drag.ghost.remove();
+  drag.chip.classList.remove("dragging");
+  showDropTarget(null);
+  drag = null;
+}
+
+function dropTarget(x, y) {
+  const hit = document.elementFromPoint(x, y);
+  const row = hit && hit.closest(".line");
+  if (!row) return null;
+  const chips = [...row.querySelectorAll(".piece")];
+  let index = chips.length;
+  for (let i = 0; i < chips.length; i++) {
+    const r = chips[i].getBoundingClientRect();
+    if (y < r.top || (y <= r.bottom && x < r.left + r.width / 2)) {
+      index = i;
+      break;
+    }
+  }
+  return { key: row.dataset.key, index };
+}
+
+function showDropTarget(target) {
+  for (const e of document.querySelectorAll(".drop-target, .drop-before, .drop-after")) {
+    e.classList.remove("drop-target", "drop-before", "drop-after");
+  }
+  if (!target) return;
+  const row = document.querySelector(`.line[data-key="${target.key}"]`);
+  row.classList.add("drop-target");
+  const chips = row.querySelectorAll(".piece");
+  if (target.index < chips.length) chips[target.index].classList.add("drop-before");
+  else if (chips.length) chips[chips.length - 1].classList.add("drop-after");
+}
+
+function renderPalette() {
+  const box = $("chips");
+  box.replaceChildren();
+  const add = (source, text, className) => {
+    const chip = el("button", "chip " + className, text);
+    chip.type = "button";
+    if (!source.field) chip.id = "palette-text";
+    draggable(chip, source, () => paletteClick(source));
+    box.append(chip);
+  };
+  add({}, "Text", "text");
+  for (const name of view.placeholders) add({ field: name }, name, "field");
+}
+
+function openEditor(template, original) {
+  editing = original || "";
+  selected = null;
+  lastInput = null;
+  activeLine = "song.details";
+  lines = {};
+  $("editor-title").textContent = original ? "Edit " + original : "New style";
+  $("editor-name").value = template.name || "";
+  for (const part of $("parts").children) {
+    const t = template[part.dataset.part] || {};
+    for (const [line] of LINES) {
+      const text = t[line] || "";
+      lines[`${part.dataset.part}.${line}`] = { text, pieces: templateToPieces(text, view.placeholders) };
+    }
+    part.open = part.dataset.part === "song" || !!(t.details || t.state);
+  }
+  renderAllLines();
+  $("editor-error").hidden = true;
+  $("editor").hidden = false;
+  $("editor").scrollIntoView({ block: "start" });
+  $("editor-name").focus();
+  updatePreview();
+}
+
+function closeEditor() {
+  editing = null;
+  $("editor").hidden = true;
+}
+
+function draft() {
+  const d = { name: $("editor-name").value.trim() };
+  for (const [part] of PARTS) {
+    d[part] = {};
+    for (const [line] of LINES) d[part][line] = lines[`${part}.${line}`].text;
+  }
+  return d;
+}
+
+function showEditorError(e) {
+  const err = $("editor-error");
+  err.textContent = e ? String(e) : "";
+  err.hidden = !e;
+}
+
+async function updatePreview() {
+  try {
+    $("editor-preview").replaceChildren(...previewRows(await api().PreviewCustom(draft())));
+    showEditorError(null);
+  } catch (e) {
+    showEditorError(e);
+  }
+}
+
+async function saveEditor() {
+  const d = draft();
+  const list = customStyles().slice();
+  const i = editing ? list.findIndex((c) => c.name === editing) : -1;
+  if (i >= 0) list[i] = d;
+  else list.push(d);
+  const change = { customStyles: list };
+  // a new style is put to use; a renamed one stays in use
+  const inUse = editing && (file.style || "").toLowerCase() === editing.toLowerCase();
+  if (!editing || inUse) change.style = d.name;
+  try {
+    await api().CheckCustomStyles(list);
+    await saveFile(change);
+  } catch (e) {
+    showEditorError(e);
+    return;
+  }
+  closeEditor();
+  await reloadFile();
+}
+
+async function deleteCustom(name) {
+  const change = { customStyles: customStyles().filter((c) => c.name !== name) };
+  if ((file.style || "").toLowerCase() === name.toLowerCase()) change.style = "";
+  if (editing === name) closeEditor();
+  await save(change);
+  await reloadFile();
+}
+
+$("editor-name").addEventListener("input", schedulePreview);
+$("editor-text-mode").addEventListener("change", (e) => {
+  textMode = e.target.checked;
+  try {
+    localStorage.setItem("textMode", textMode ? "1" : "");
+  } catch {}
+  // back to pieces: lines changed as text are read again
+  if (!textMode) for (const line of Object.values(lines)) line.pieces = templateToPieces(line.text, view.placeholders);
+  selected = null;
+  renderAllLines();
+});
+$("editor-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  saveEditor();
+});
+$("editor-save").addEventListener("click", saveEditor);
+$("editor-cancel").addEventListener("click", closeEditor);
+$("new-style").addEventListener("click", () => openEditor({ name: "", song: { details: "{title}[ - {artist}]" } }, null));
+
+/* tabs */
+
+function showTab(name) {
+  for (const tab of document.querySelectorAll(".tab")) {
+    tab.setAttribute("aria-selected", String(tab.dataset.tab === name));
+  }
+  $("tab-status").hidden = name !== "status";
+  $("tab-styles").hidden = name !== "styles";
+  try {
+    localStorage.setItem("tab", name);
+  } catch {}
+}
+
+for (const tab of document.querySelectorAll(".tab")) {
+  tab.addEventListener("click", () => showTab(tab.dataset.tab));
+}
 
 /* status */
 
@@ -459,8 +998,15 @@ function renderVersions() {
 
 (async () => {
   await waitForBindings();
+  let tab = "status";
+  try {
+    tab = localStorage.getItem("tab") || tab;
+  } catch {}
+  showTab(tab === "styles" ? tab : "status");
   view = await api().Load();
   file = { ...view.file };
+  renderEditorParts();
+  renderPalette();
   renderStyles();
   renderAdvanced();
   renderLocations();

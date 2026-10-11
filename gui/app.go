@@ -38,11 +38,17 @@ type View struct {
 	Defaults   config.Config     `json:"defaults"`
 	Styles     []StyleInfo       `json:"styles"`
 	EnvVars    map[string]string `json:"envVars"`
+	// Placeholders are the {names} custom style templates can use.
+	Placeholders []string `json:"placeholders"`
 }
 
+// StyleInfo is a built-in style, then the custom ones from the file.
 type StyleInfo struct {
-	Name     string    `json:"name"`
-	Previews []Preview `json:"previews"`
+	Name     string               `json:"name"`
+	Custom   bool                 `json:"custom"`
+	Template presence.CustomStyle `json:"template"` // a built-in's is the starting point for a copy
+	Previews []Preview            `json:"previews"`
+	Error    string               `json:"error,omitempty"` // a custom style that doesn't compile
 }
 
 type Preview struct {
@@ -52,7 +58,7 @@ type Preview struct {
 }
 
 func (a *App) Load() View {
-	v := View{Defaults: config.Defaults(), EnvVars: config.EnvVars}
+	v := View{Defaults: config.Defaults(), EnvVars: config.EnvVars, Placeholders: presence.Placeholders}
 	v.ConfigPath = a.configPath()
 	file, err := config.Read(v.ConfigPath)
 	if err != nil {
@@ -60,13 +66,37 @@ func (a *App) Load() View {
 	}
 	v.File = file
 	for _, s := range presence.Styles {
-		v.Styles = append(v.Styles, StyleInfo{Name: s.Name, Previews: previews(s.Style)})
+		v.Styles = append(v.Styles, StyleInfo{Name: s.Name, Template: s.Template, Previews: previews(s.Style, cardSamples)})
+	}
+	for _, c := range file.CustomStyles {
+		info := StyleInfo{Name: c.Name, Custom: true, Template: c}
+		if style, err := c.Compile(); err != nil {
+			info.Error = err.Error()
+		} else {
+			info.Previews = previews(style, cardSamples)
+		}
+		v.Styles = append(v.Styles, info)
 	}
 	return v
 }
 
+// Save doesn't check custom styles, so a broken one in a hand-edited file
+// doesn't stop other settings being saved: the editor calls CheckCustomStyles.
 func (a *App) Save(c config.Config) error {
 	return config.Save(a.configPath(), c)
+}
+
+func (a *App) CheckCustomStyles(styles []presence.CustomStyle) error {
+	return presence.ValidateCustom(styles)
+}
+
+// PreviewCustom is the style editor's live preview, in every state.
+func (a *App) PreviewCustom(c presence.CustomStyle) ([]Preview, error) {
+	style, err := c.Compile()
+	if err != nil {
+		return nil, err
+	}
+	return previews(style, samples), nil
 }
 
 type DaemonStatus struct {
@@ -200,17 +230,31 @@ func (a *App) configPath() string {
 	return p
 }
 
-var samples = []struct {
+type sample struct {
 	where string
 	state presence.State
-}{
-	{"Song", presence.State{V: 1, State: presence.StateArcade, Song: "RE-TUNED", Artist: "peak divide ft. Rachel Lake",
-		Charter: "re-kouned", Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B"}},
-	{"Story", presence.State{V: 1, State: presence.StateStory, Chapter: "Chapter 4", Stars: ptr(8.703)}},
-	{"Menus", presence.State{V: 1, State: presence.StateIdle, Stars: ptr(8.703)}},
 }
 
-func previews(style presence.Style) []Preview {
+var (
+	songSample = sample{"Song", presence.State{V: 1, State: presence.StateArcade, Song: "RE-TUNED", Artist: "peak divide ft. Rachel Lake",
+		Charter: "re-kouned", Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B", Stars: ptr(8.703)}}
+	storySample = sample{"Story", presence.State{V: 1, State: presence.StateStory, Chapter: "Chapter 4", Stars: ptr(8.703)}}
+	menusSample = sample{"Menus", presence.State{V: 1, State: presence.StateIdle, Stars: ptr(8.703)}}
+
+	// cardSamples are shown on each style's card; samples, every state, in the editor.
+	cardSamples = []sample{songSample, storySample, menusSample}
+	samples     = []sample{
+		songSample,
+		{"Results", presence.State{V: 1, State: presence.StateResults, Song: "YEAH YEAH", Artist: "peak divide",
+			Charter: "re-kouned", Difficulty: "Star", Level: ptr(14), HighScore: ptr(1256914), Rank: "A", Stars: ptr(8.703)}},
+		{"Story song", presence.State{V: 1, State: presence.StateStory, Chapter: "Chapter 2", Song: "Low", Artist: "peak divide",
+			Difficulty: "Normal", Stars: ptr(8.703)}},
+		storySample,
+		menusSample,
+	}
+)
+
+func previews(style presence.Style, samples []sample) []Preview {
 	var out []Preview
 	for _, s := range samples {
 		act := presence.Format(s.state, presence.Options{Style: style})

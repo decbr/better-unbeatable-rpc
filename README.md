@@ -59,13 +59,23 @@ Re-running `./install.sh` is always safe, e.g. after Steam's *delete local conte
 | `spotify` | **RE-TUNED** / peak divide ft. Rachel Lake | **Story mode** / Chapter 4 | **In menus** / ★ 8.703 |
 | `osu` | **peak divide - RE-TUNED (re-kouned) [UNBEATABLE]** / Doing crimes | **Story mode** / Chapter 4 | **In menus** / ★ 8.703 |
 
-To switch, open **UNBEATABLE RPC** from your app menu and pick one. It takes effect within a few seconds, no restart needed. The app also shows whether the game and Discord are detected, and what your status currently says.
+To switch, open **UNBEATABLE RPC** from your app menu and pick one on the **Styles** tab. It takes effect within a few seconds, no restart needed. The **Status** tab shows whether the game and Discord are detected, and what your status currently says.
+
+### Custom styles
+
+On the **Styles** tab, **New style** makes your own, or **Duplicate** starts from a built-in one. Each state (song, results, a song in story mode, story mode, menus) has two lines, built from pieces you drag in: plain text, or one of
+
+`title` `artist` `charter` `difficulty` `level` `pb` `rank` `stars` `chapter`
+
+Click a piece to give it text before and after, like ` - ` before `artist`. A piece is left out when its information is missing, along with that text, so a song with no artist doesn't end in a stray ` - `. It can show something else instead: `pb` with *No PB yet*.
+
+**Edit as text** shows the lines as templates, which is what's saved: `{title}[ - {artist}]` is a title and an artist piece, square brackets marking what's left out together, and `[PB: {pb}|No PB yet]` shows what's after the `|` when there's no PB. Write `\[`, `\]`, `\{`, `\}`, `\|` or `\\` for the character itself. Results falls back to Song and a story-mode song to Story when left empty; Story and Menus fall back to `detailed`.
 
 Without the app, edit `~/.config/unbeatable-rpc/config.json`:
 ```json
 {"style": "spotify"}
 ```
-The other settings there are `hidden` (keep the game off Discord without closing it, the app's **Show on Discord** box), `largeImage`, `clientId`, `socket` and `verbose`. `UNBEATABLE_RPC_*` environment variables and command-line flags win over the file; run `~/.local/bin/unbeatable-rpc -h` for the list.
+Custom styles are saved there too, under `customStyles`, and `style` can name one. The other settings there are `hidden` (keep the game off Discord without closing it, the app's **Show on Discord** box), `largeImage`, `clientId`, `socket` and `verbose`. `UNBEATABLE_RPC_*` environment variables and command-line flags win over the file; run `~/.local/bin/unbeatable-rpc -h` for the list.
 
 ## Troubleshooting
 

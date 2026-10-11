@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +26,7 @@ func newTestApp(t *testing.T) *App {
 
 func TestLoadPreviews(t *testing.T) {
 	v := newTestApp(t).Load()
-	if v.FileError != "" || v.File != (config.Config{}) {
+	if v.FileError != "" || !reflect.DeepEqual(v.File, config.Config{}) {
 		t.Errorf("fresh load: file %+v, error %q", v.File, v.FileError)
 	}
 	got := map[string]Preview{}
@@ -50,10 +51,10 @@ func TestSaveWritesSettingsFile(t *testing.T) {
 	if filepath.Dir(filepath.Dir(path)) != os.Getenv("XDG_CONFIG_HOME") {
 		t.Fatalf("settings path %s is outside the test dir", path)
 	}
-	if got, err := config.Read(path); err != nil || got != want {
+	if got, err := config.Read(path); err != nil || !reflect.DeepEqual(got, want) {
 		t.Errorf("read back %+v, %v; want %+v", got, err, want)
 	}
-	if v := a.Load(); v.File != want {
+	if v := a.Load(); !reflect.DeepEqual(v.File, want) {
 		t.Errorf("Load after Save = %+v", v.File)
 	}
 }
@@ -132,6 +133,46 @@ func TestLoadKeepsRegistryOrder(t *testing.T) {
 	}
 	if want := presence.StyleNames(); strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("app lists %v, registry order is %v", got, want)
+	}
+}
+
+func TestCustomStyles(t *testing.T) {
+	a := newTestApp(t)
+	mine := presence.CustomStyle{Name: "mine", Song: presence.Template{Details: "{title} by {artist}"}}
+	broken := presence.CustomStyle{Name: "broken", Song: presence.Template{Details: "{titel}"}}
+
+	if err := a.CheckCustomStyles([]presence.CustomStyle{mine, {Name: "osu"}}); err == nil {
+		t.Error("accepted a custom style named after a built-in")
+	}
+	if err := a.CheckCustomStyles([]presence.CustomStyle{mine}); err != nil {
+		t.Error(err)
+	}
+	// a hand-edited file can hold a broken one: it's listed with its error
+	if err := a.Save(config.Config{Style: "mine", CustomStyles: []presence.CustomStyle{mine, broken}}); err != nil {
+		t.Fatal(err)
+	}
+
+	v := a.Load()
+	byName := map[string]StyleInfo{}
+	for _, s := range v.Styles {
+		byName[s.Name] = s
+	}
+	if s := byName["mine"]; !s.Custom || s.Previews[0].Details != "RE-TUNED by peak divide ft. Rachel Lake" {
+		t.Errorf("mine = %+v", s)
+	}
+	if s := byName["broken"]; s.Error == "" || s.Previews != nil {
+		t.Errorf("broken = %+v", s)
+	}
+	if s := byName["osu"]; s.Custom || s.Template.Song.Details == "" {
+		t.Errorf("built-in osu = %+v, want its template", s)
+	}
+
+	ps, err := a.PreviewCustom(mine)
+	if err != nil || len(ps) != len(samples) || ps[1].Where != "Results" || ps[1].Details != "YEAH YEAH by peak divide" {
+		t.Errorf("PreviewCustom = %+v, %v", ps, err)
+	}
+	if _, err := a.PreviewCustom(broken); err == nil || !strings.Contains(err.Error(), "{titel}") {
+		t.Errorf("PreviewCustom(broken) error = %v", err)
 	}
 }
 

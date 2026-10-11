@@ -786,9 +786,6 @@ function showTab(name) {
   }
   $("tab-status").hidden = name !== "status";
   $("tab-styles").hidden = name !== "styles";
-  try {
-    localStorage.setItem("tab", name);
-  } catch {}
 }
 
 for (const tab of document.querySelectorAll(".tab")) {
@@ -1126,11 +1123,8 @@ function renderVersions() {
 
 (async () => {
   await waitForBindings();
-  let tab = "status";
-  try {
-    tab = localStorage.getItem("tab") || tab;
-  } catch {}
-  showTab(tab === "styles" ? tab : "status");
+  // always Status first: it's where problems show
+  showTab("status");
   view = await api().Load();
   file = { ...view.file };
   renderEditorParts();

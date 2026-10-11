@@ -26,9 +26,9 @@ async function waitForBindings() {
 /* settings */
 
 function previewRows(previews) {
-  return previews.map((p) => {
+  return previews.map((p, i) => {
     const row = document.createElement("div");
-    row.className = "preview";
+    row.className = i ? "preview more-row" : "preview";
     const where = document.createElement("div");
     where.className = "preview-where";
     where.textContent = p.where;
@@ -86,8 +86,12 @@ function renderStyles() {
     if (s.custom) {
       actions.append(
         actionButton("Edit", () => openEditor(s.template, s.name)),
-        actionButton("Copy", (btn) => copyStyle(s.template, btn)),
-        actionButton("Save…", (btn) => saveStyleFile(s.template, btn)),
+        actionButton("Share", (btn) =>
+          openMenu(btn, [
+            ["Copy as text", () => copyStyle(s.template, btn)],
+            ["Save as file…", () => saveStyleFile(s.template, btn)],
+          ]),
+        ),
         actionButton("Delete", (btn) => {
           if (btn.dataset.armed) return deleteCustom(s.name);
           btn.dataset.armed = "1";
@@ -257,6 +261,47 @@ async function saveStyleFile(style, btn) {
   }
 }
 
+// openMenu shows a small menu under btn; any click or Escape closes it.
+let closeMenu = null;
+
+function openMenu(btn, items) {
+  const wasOpen = closeMenu && closeMenu.btn === btn;
+  if (closeMenu) closeMenu();
+  if (wasOpen) return;
+  const menu = el("div", "menu");
+  menu.setAttribute("role", "menu");
+  for (const [text, action] of items) {
+    const item = el("button", "", text);
+    item.type = "button";
+    item.setAttribute("role", "menuitem");
+    item.addEventListener("click", (e) => {
+      e.preventDefault(); // inside the card's label
+      closeMenu();
+      action();
+    });
+    menu.append(item);
+  }
+  btn.after(menu);
+  btn.setAttribute("aria-expanded", "true");
+  const outside = (e) => {
+    if (!menu.contains(e.target) && e.target !== btn) closeMenu();
+  };
+  const escape = (e) => {
+    if (e.key === "Escape") closeMenu();
+  };
+  closeMenu = () => {
+    menu.remove();
+    btn.removeAttribute("aria-expanded");
+    document.removeEventListener("pointerdown", outside, true);
+    document.removeEventListener("keydown", escape);
+    closeMenu = null;
+  };
+  closeMenu.btn = btn;
+  document.addEventListener("pointerdown", outside, true);
+  document.addEventListener("keydown", escape);
+  menu.querySelector("button").focus();
+}
+
 function showImport(open) {
   $("import").hidden = !open;
   $("import-error").hidden = true;
@@ -315,6 +360,9 @@ function renderEditorParts() {
       wrap.append(el("div", "line-label", label), el("div", "line-body"));
       body.append(wrap);
     }
+    const preview = el("div", "part-preview");
+    preview.dataset.where = title;
+    body.append(preview);
     part.append(summary, body);
     box.append(part);
   }
@@ -391,7 +439,7 @@ function pieceChip(key, p, i) {
   chip.classList.toggle("selected", !!selected && selected.key === key && selected.index === i);
   if (p.field) {
     if (p.before) chip.append(el("span", "piece-extra", p.before));
-    chip.append(el("span", "piece-name", p.field));
+    chip.append(el("span", "piece-tag", p.field));
     if (p.after) chip.append(el("span", "piece-extra", p.after));
     if (p.fallback) chip.append(el("span", "piece-fallback", "or " + p.fallback));
   } else {
@@ -666,7 +714,16 @@ function showEditorError(e) {
 
 async function updatePreview() {
   try {
-    $("editor-preview").replaceChildren(...previewRows(await api().PreviewCustom(draft())));
+    // each state's preview goes under its own lines; Go names them as PARTS does
+    for (const p of await api().PreviewCustom(draft())) {
+      const box = $("parts").querySelector(`.part-preview[data-where="${p.where}"]`);
+      if (!box) continue;
+      box.replaceChildren(
+        el("div", "part-preview-label", "Preview"),
+        el("div", "presence-line", p.details || " "),
+        el("div", "presence-line", p.state || " "),
+      );
+    }
     showEditorError(null);
   } catch (e) {
     showEditorError(e);

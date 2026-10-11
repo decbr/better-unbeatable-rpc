@@ -113,22 +113,32 @@
     <section class="card" id="editor" hidden>
       <header>
         <h2 id="editor-title">New style</h2>
+        <label class="check small-check"><input type="checkbox" id="editor-text-mode"> Edit as text</label>
       </header>
       <form id="editor-form">
         <label>Name
           <input id="editor-name" maxlength="40" autocomplete="off">
         </label>
         <div class="chips" id="chips"></div>
-        <p class="dim small" id="help-pieces">Drag a piece into a line, or click it to add it to the highlighted line.
-          Click a piece in a line to change it. A piece is left out when its information is missing, along with the text before and after it.</p>
-        <p class="dim small" id="help-text" hidden>Click a placeholder to insert it.
-          Text in [square brackets] is left out when a placeholder in it is empty; [a|b] shows b instead.
-          Write \[ for a bracket itself.</p>
-        <label class="check small-check"><input type="checkbox" id="editor-text-mode"> Edit as text</label>
+        <div class="dim small" id="help-pieces">
+          <p>Drag pieces into a line, and click one to change it.</p>
+          <details class="more">
+            <summary>How pieces work</summary>
+            <p>A piece is left out when its information is missing, along with the text before and after it,
+              so a song with no artist doesn't end in a stray " - ". It can show something else instead, like "No PB yet".
+              Clicking a piece in the palette adds it to the end of the highlighted line.</p>
+          </details>
+        </div>
+        <div class="dim small" id="help-text" hidden>
+          <p>Click a placeholder to insert it at the cursor.</p>
+          <details class="more">
+            <summary>How templates work</summary>
+            <p>Text in [square brackets] is left out when a placeholder in it is empty, and [a|b] shows b instead.
+              Write \[ \] \{ \} \| or \\ for the character itself.</p>
+          </details>
+        </div>
         <div class="parts" id="parts"></div>
       </form>
-      <h3>Preview</h3>
-      <div id="editor-preview"></div>
       <p class="error" id="editor-error" hidden></p>
       <div class="controls">
         <button id="editor-save">Save</button>

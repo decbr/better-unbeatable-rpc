@@ -245,7 +245,8 @@ button.quiet { background: var(--raised); color: var(--text); padding: 4px 10px;
   cursor: grab;
   touch-action: none;
 }
-.chip.field, .piece-name { color: #c9cdfb; }
+/* a placeholder is a tag, in the palette and in a line */
+.chip.field, .piece-tag { color: #c9cdfb; background: #33365a; border-color: #454a8a; }
 .chip:active, .piece:active { cursor: grabbing; }
 
 .line-wrap { display: grid; gap: 4px; }
@@ -266,10 +267,12 @@ button.quiet { background: var(--raised); color: var(--text); padding: 4px 10px;
 .line.active { border-color: #4e5058; }
 .line.drop-target { border-color: var(--accent); }
 .line-empty { align-self: center; padding: 0 4px; color: #6d6f78; font-size: 13px; }
-.piece { display: flex; align-items: baseline; padding: 3px 7px; white-space: pre; }
-.piece.field { background: #33365a; border-color: #454a8a; }
-.piece-name { font-weight: 600; }
-.piece-extra { color: var(--text); }
+.piece { display: flex; align-items: center; padding: 3px 7px; white-space: pre; }
+.piece.field { padding: 2px; }
+.piece.field:has(.piece-extra, .piece-fallback) { padding: 2px 6px 2px 2px; }
+.piece.field:has(.piece-extra:first-child) { padding-left: 6px; }
+.piece-tag { padding: 1px 6px; border: 0; border-radius: 3px; font-weight: 600; }
+.piece.field .piece-extra { color: var(--dim); padding: 0 2px; }
 .piece-fallback { color: var(--dim); font-style: italic; margin-left: 6px; }
 .piece.text .piece-fallback { margin: 0; }
 .piece.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -313,7 +316,45 @@ select {
 .part summary .dim { font-weight: 400; }
 .part-lines { display: grid; gap: 6px; margin-top: 6px; }
 input.template { font: 13px ui-monospace, "DejaVu Sans Mono", monospace; }
-#editor-preview { display: grid; }
+.part-preview {
+  display: grid;
+  padding: 6px 10px;
+  background: var(--raised);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.part-preview:empty { display: none; }
+.part-preview-label { font-size: 11px; font-weight: 600; color: var(--dim); }
+
+#help-pieces p, #help-text p { margin: 0; }
+.card .more summary { display: block; width: max-content; margin: 2px 0 0; cursor: pointer; list-style: none; text-decoration: underline dotted; }
+.more p { margin-top: 4px; }
+
+/* only the selected card shows every state */
+.style:not(:has(input:checked)) .more-row { display: none; }
+
+.style-actions { position: relative; }
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, .24);
+}
+.menu button {
+  background: none;
+  color: var(--text);
+  font-weight: 500;
+  text-align: left;
+  padding: 6px 10px;
+}
+.menu button:hover, .menu button:focus-visible { background: var(--accent); outline: none; }
 
 .header-buttons { display: flex; gap: 6px; }
 .import { display: grid; gap: 8px; margin-bottom: 10px; }

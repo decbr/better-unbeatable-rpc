@@ -180,3 +180,17 @@ func timeNowPlus(t *testing.T, seconds int) time.Time {
 	t.Helper()
 	return time.Now().Add(time.Duration(seconds) * time.Second)
 }
+
+func TestPreviewCustomStates(t *testing.T) {
+	ps, err := newTestApp(t).PreviewCustom(presence.CustomStyle{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, p := range ps {
+		got = append(got, p.Where)
+	}
+	if want := "Song,Results,Story song,Story,Menus"; strings.Join(got, ",") != want {
+		t.Errorf("previews for %v, want %s (the editor's PARTS titles)", got, want)
+	}
+}

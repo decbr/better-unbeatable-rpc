@@ -109,3 +109,15 @@ func TestWatch(t *testing.T) {
 		t.Errorf("calls = %d after creating the file, want 1", calls.Load())
 	}
 }
+
+func TestResolveHidden(t *testing.T) {
+	if c, _ := Resolve(Config{Hidden: true}, nil); !c.Hidden {
+		t.Error("hidden in the file was ignored")
+	}
+	if c, _ := Resolve(Config{Hidden: true}, Overrides{KeyHidden: "false"}); c.Hidden {
+		t.Error("UNBEATABLE_RPC_HIDDEN=false didn't win over the file")
+	}
+	if _, err := Resolve(Config{}, Overrides{KeyHidden: "sometimes"}); err == nil {
+		t.Error("bad hidden override accepted")
+	}
+}

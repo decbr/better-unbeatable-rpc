@@ -33,6 +33,8 @@ type Config struct {
 	ClientID   string `json:"clientId,omitempty"`
 	Socket     string `json:"socket,omitempty"`
 	Verbose    bool   `json:"verbose,omitempty"`
+	// Hidden keeps the game off Discord without closing it.
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 // Keys and the environment variable that overrides each one.
@@ -42,6 +44,7 @@ const (
 	KeyClientID   = "clientId"
 	KeySocket     = "socket"
 	KeyVerbose    = "verbose"
+	KeyHidden     = "hidden"
 )
 
 var EnvVars = map[string]string{
@@ -50,6 +53,7 @@ var EnvVars = map[string]string{
 	KeyClientID:   "UNBEATABLE_RPC_CLIENT_ID",
 	KeySocket:     "UNBEATABLE_RPC_SOCKET",
 	KeyVerbose:    "UNBEATABLE_RPC_VERBOSE",
+	KeyHidden:     "UNBEATABLE_RPC_HIDDEN",
 }
 
 func Defaults() Config {
@@ -156,6 +160,7 @@ func Resolve(file Config, o Overrides) (Config, error) {
 		c.Socket = file.Socket
 	}
 	c.Verbose = file.Verbose
+	c.Hidden = file.Hidden
 
 	for key, v := range o {
 		switch key {
@@ -167,12 +172,16 @@ func Resolve(file Config, o Overrides) (Config, error) {
 			c.ClientID = v
 		case KeySocket:
 			c.Socket = v
-		case KeyVerbose:
+		case KeyVerbose, KeyHidden:
 			b, err := strconv.ParseBool(v)
 			if err != nil {
-				return c, fmt.Errorf("%s: %q is not true or false", KeyVerbose, v)
+				return c, fmt.Errorf("%s: %q is not true or false", key, v)
 			}
-			c.Verbose = b
+			if key == KeyVerbose {
+				c.Verbose = b
+			} else {
+				c.Hidden = b
+			}
 		default:
 			return c, fmt.Errorf("unknown setting %q", key)
 		}

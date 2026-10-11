@@ -275,3 +275,29 @@ func TestManagerFallsBackToSessionStart(t *testing.T) {
 	states <- State{V: 1, State: StateArcade, Song: "Low", LaunchedAt: 42}
 	waitFor(t, "plugin launch time", func() bool { a := m.Status().Activity; return a != nil && a.Timestamps.Start == 42 })
 }
+
+func TestManagerHiddenClearsButStaysConnected(t *testing.T) {
+	r := newRecorder(t)
+	m, states := startManagerWith(t, r, 10*time.Millisecond, time.Minute)
+
+	states <- State{V: 1, State: StateArcade, Song: "Low"}
+	waitFor(t, "activity", func() bool { got, _ := r.snapshot(); return len(got) == 1 && got[0] == "Low" })
+
+	m.Apply(Update{Hidden: true})
+	waitFor(t, "cleared activity", func() bool { got, _ := r.snapshot(); return len(got) == 2 && got[1] == "" })
+	if st := m.Status(); !st.Hidden || !st.Discord.Connected || st.Activity != nil || !st.GameRunning {
+		t.Errorf("hidden status = %+v, want hidden, connected, game running, no activity", st)
+	}
+
+	states <- State{V: 1, State: StateArcade, Song: "Next"}
+	time.Sleep(100 * time.Millisecond)
+	if got, _ := r.snapshot(); len(got) != 2 {
+		t.Errorf("sent %q while hidden", got[2:])
+	}
+
+	m.Apply(Update{})
+	waitFor(t, "activity back on unhide", func() bool { got, _ := r.snapshot(); return len(got) == 3 && got[2] == "Next" })
+	if _, accepts := r.snapshot(); accepts != 1 {
+		t.Errorf("connections = %d, want 1 (hiding shouldn't reconnect)", accepts)
+	}
+}

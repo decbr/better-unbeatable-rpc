@@ -90,6 +90,7 @@ func main() {
 		Options: u.Options,
 		Log:     logger,
 		Verbose: u.Verbose,
+		Hidden:  u.Hidden,
 		Dial: func(ctx context.Context) (*discordipc.Client, error) {
 			cfg := d.current()
 			var paths []string
@@ -177,6 +178,7 @@ func (d *daemon) load(initial bool) (presence.Update, error) {
 	return presence.Update{
 		Options:   presence.Options{LargeImage: cfg.EffectiveLargeImage(), LargeText: largeText, Style: style},
 		Verbose:   cfg.Verbose,
+		Hidden:    cfg.Hidden,
 		Reconnect: !initial && (cfg.ClientID != prev.ClientID || cfg.Socket != prev.Socket),
 	}, nil
 }

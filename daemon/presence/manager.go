@@ -17,6 +17,8 @@ type Manager struct {
 	HeartbeatTimeout time.Duration
 	Log              *log.Logger
 	Verbose          bool
+	// Hidden clears the activity while staying connected.
+	Hidden bool
 
 	Dial func(ctx context.Context) (*discordipc.Client, error)
 
@@ -47,6 +49,7 @@ type Manager struct {
 type Update struct {
 	Options Options
 	Verbose bool
+	Hidden  bool
 	// Reconnect drops the Discord connection so the next one uses new dial
 	// settings (client ID, socket).
 	Reconnect bool
@@ -55,6 +58,7 @@ type Update struct {
 // Status is what the manager is doing, for the status endpoint.
 type Status struct {
 	GameRunning bool                 `json:"gameRunning"`
+	Hidden      bool                 `json:"hidden"`
 	LastHeard   *time.Time           `json:"lastHeard,omitempty"`
 	Discord     DiscordStatus        `json:"discord"`
 	Activity    *discordipc.Activity `json:"activity"`
@@ -149,6 +153,7 @@ func (m *Manager) wakeCh() chan struct{} {
 func (m *Manager) apply(u Update) {
 	m.Options = u.Options
 	m.Verbose = u.Verbose
+	m.Hidden = u.Hidden
 	if u.Reconnect {
 		m.disconnect(true)
 		m.nextDial = time.Time{}
@@ -156,12 +161,19 @@ func (m *Manager) apply(u Update) {
 		m.dialFails = 0
 	}
 	if m.gameAlive {
-		m.desired = Format(m.lastState, m.Options)
+		m.desired = m.format(m.lastState)
 	}
 }
 
+func (m *Manager) format(s State) *discordipc.Activity {
+	if m.Hidden {
+		return nil
+	}
+	return Format(s, m.Options)
+}
+
 func (m *Manager) publish() {
-	st := Status{GameRunning: m.gameAlive, Discord: DiscordStatus{LastError: m.lastError}}
+	st := Status{GameRunning: m.gameAlive, Hidden: m.Hidden, Discord: DiscordStatus{LastError: m.lastError}}
 	if !m.lastHeard.IsZero() {
 		t := m.lastHeard
 		st.LastHeard = &t
@@ -198,7 +210,7 @@ func (m *Manager) handle(s State, now time.Time) {
 	}
 	m.gameAlive = true
 	m.lastState = s
-	m.desired = Format(s, m.Options)
+	m.desired = m.format(s)
 }
 
 func (m *Manager) reconcile(ctx context.Context, now time.Time) {

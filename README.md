@@ -57,7 +57,7 @@ Re-running `./install.sh` is always safe, e.g. after Steam's *delete local conte
 |---|---|---|---|
 | `detailed` (default) | the table at the top | | |
 | `spotify` | **RE-TUNED** / peak divide ft. Rachel Lake | **Story mode** / Chapter 4 | **In menus** / ★ 8.703 |
-| `osu` | **peak divide - RE-TUNED (charter) [UNBEATABLE]** / Doing crimes | **Story mode** / Chapter 4 | **In menus** / ★ 8.703 |
+| `osu` | **peak divide - RE-TUNED (re-kouned) [UNBEATABLE]** / Doing crimes | **Story mode** / Chapter 4 | **In menus** / ★ 8.703 |
 
 To switch, open **UNBEATABLE RPC** from your app menu and pick one. It takes effect within a few seconds, no restart needed. The app also shows whether the game and Discord are detected, and what your status currently says.
 
@@ -65,9 +65,11 @@ Without the app, edit `~/.config/unbeatable-rpc/config.json`:
 ```json
 {"style": "spotify"}
 ```
-The other settings there are `largeImage`, `clientId`, `socket` and `verbose`. `UNBEATABLE_RPC_*` environment variables and command-line flags win over the file; run `~/.local/bin/unbeatable-rpc -h` for the list.
+The other settings there are `hidden` (keep the game off Discord without closing it, the app's **Show on Discord** box), `largeImage`, `clientId`, `socket` and `verbose`. `UNBEATABLE_RPC_*` environment variables and command-line flags win over the file; run `~/.local/bin/unbeatable-rpc -h` for the list.
 
 ## Troubleshooting
+
+Open **UNBEATABLE RPC** first. Its **Setup** section checks BepInEx, the mod, the Proton prefix and the last launch, and says what to fix; the Status section explains Discord problems. **Copy diagnostics** puts everything needed for a bug report on your clipboard.
 
 **Nothing shows up in Discord**
 - Vesktop: Settings → *Rich Presence (arRPC)* must be on.

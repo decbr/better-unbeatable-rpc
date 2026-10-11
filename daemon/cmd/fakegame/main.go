@@ -76,7 +76,7 @@ func main() {
 		{"arcade song", *stepLen, `{"v":1,"state":"arcade",` + song + `}`},
 		{"paused", *stepLen, `{"v":1,"state":"arcade",` + song + `,"paused":true}`},
 		{"resumed", *stepLen, `{"v":1,"state":"arcade",` + song + `}`},
-		{"results (new PB)", *stepLen, `{"v":1,"state":"results","song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","charter":"charter","difficulty":"UNBEATABLE","level":20,"highScore":1201234,"accuracy":0.9512,"rank":"S+","stars":12.401}`},
+		{"results (new PB)", *stepLen, `{"v":1,"state":"results","song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","charter":"re-kouned","difficulty":"UNBEATABLE","level":20,"highScore":1201234,"accuracy":0.9512,"rank":"S+","stars":12.401}`},
 		{"story mode", *stepLen, `{"v":1,"state":"story","chapter":"Chapter 4","stars":12.401}`},
 		{"idle again", *stepLen, `{"v":1,"state":"idle","stars":12.401}`},
 		{"closed", 0, `{"v":1,"state":"closed"}`},
@@ -95,7 +95,7 @@ func main() {
 	log.Printf("done")
 }
 
-const song = `"song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","charter":"charter","difficulty":"UNBEATABLE","level":20,"highScore":1166540,"accuracy":0.9361,"rank":"S","stars":12.345`
+const song = `"song":"RE-TUNED","artist":"peak divide ft. Rachel Lake","charter":"re-kouned","difficulty":"UNBEATABLE","level":20,"highScore":1166540,"accuracy":0.9361,"rank":"S","stars":12.345`
 
 // holds are the states -hold can send.
 var holds = map[string]string{

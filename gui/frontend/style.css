@@ -60,6 +60,53 @@ code { user-select: text; word-break: break-all; }
 
 .saved { color: var(--good); font-size: 12px; font-weight: 600; }
 
+h3 {
+  margin: 14px 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--dim);
+}
+details.card summary + h3 { margin-top: 0; }
+.small-check { font-size: 13px; }
+
+.help {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--raised);
+  user-select: text;
+}
+.help p { margin: 0; }
+
+.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.checks li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 2px 8px; }
+.check-mark { font-weight: 700; text-align: center; }
+.check-mark.ok { color: var(--good); }
+.check-mark.warn, .check-mark.unknown { color: var(--warn); }
+.check-mark.bad { color: var(--bad); }
+.check-label { color: var(--dim); }
+.check-fix { grid-column: 2; font-size: 12px; color: var(--dim); user-select: text; }
+
+textarea.diagnostics {
+  width: 100%;
+  height: 180px;
+  margin-top: 8px;
+  font: 12px ui-monospace, "DejaVu Sans Mono", monospace;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  resize: vertical;
+  user-select: text;
+}
+textarea.diagnostics[hidden] { display: none; }
+
+.controls { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+.plugin-settings { display: grid; gap: 8px; }
+
 .facts {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -128,6 +175,7 @@ input:not([type]), input[inputmode] {
   user-select: text;
 }
 input:disabled { opacity: .6; }
+input::placeholder { color: #6d6f78; opacity: 1; }
 input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 button {

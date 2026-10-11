@@ -18,6 +18,7 @@ import (
 type App struct {
 	ctx        context.Context
 	statusPort int
+	regCache   regCache
 }
 
 func NewApp() *App {
@@ -82,7 +83,13 @@ func (a *App) Status() DaemonStatus {
 	return DaemonStatus{Running: true, Status: &r}
 }
 
-func (a *App) StartDaemon() error { return startDaemon() }
+func (a *App) StartDaemon() error            { return startDaemon() }
+func (a *App) RestartDaemon() error          { return restartDaemon() }
+func (a *App) ServiceInfo() ServiceInfo      { return serviceInfo() }
+func (a *App) SetStartAtLogin(on bool) error { return setStartAtLogin(on) }
+
+// Versions for the Advanced section; the mod's is from its last launch.
+func (a *App) AppVersion() string { return version }
 
 type Location struct {
 	Key    string `json:"key"`
@@ -198,7 +205,7 @@ var samples = []struct {
 	state presence.State
 }{
 	{"Song", presence.State{V: 1, State: presence.StateArcade, Song: "RE-TUNED", Artist: "peak divide ft. Rachel Lake",
-		Charter: "charter", Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B"}},
+		Charter: "re-kouned", Difficulty: "UNBEATABLE", Level: ptr(20), HighScore: ptr(1155577), Rank: "B"}},
 	{"Story", presence.State{V: 1, State: presence.StateStory, Chapter: "Chapter 4", Stars: ptr(8.703)}},
 	{"Menus", presence.State{V: 1, State: presence.StateIdle, Stars: ptr(8.703)}},
 }

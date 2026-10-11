@@ -5,19 +5,81 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-func startDaemon() error {
-	out, err := exec.Command("systemctl", "--user", "start", "unbeatable-rpc").CombinedOutput()
+const unit = "unbeatable-rpc"
+
+func systemctl(args ...string) error {
+	out, err := exec.Command("systemctl", append([]string{"--user"}, args...)...).CombinedOutput()
 	if err != nil {
 		msg := strings.TrimSpace(string(out))
 		if msg == "" {
 			msg = err.Error()
 		}
-		return fmt.Errorf("couldn't start the unbeatable-rpc service: %s", msg)
+		return fmt.Errorf("systemctl %s: %s", strings.Join(args, " "), msg)
 	}
 	return nil
+}
+
+func startDaemon() error   { return systemctl("start", unit) }
+func restartDaemon() error { return systemctl("restart", unit) }
+
+func setStartAtLogin(on bool) error {
+	if on {
+		return systemctl("enable", unit)
+	}
+	return systemctl("disable", unit)
+}
+
+// ServiceInfo is the daemon's systemd user service. Installed is false for
+// installs that use the launch wrapper instead.
+type ServiceInfo struct {
+	Installed bool `json:"installed"`
+	Active    bool `json:"active"`
+	Enabled   bool `json:"enabled"`
+}
+
+func serviceInfo() ServiceInfo {
+	out, err := exec.Command("systemctl", "--user", "show", unit, "-p", "LoadState", "-p", "ActiveState", "-p", "UnitFileState").Output()
+	if err != nil {
+		return ServiceInfo{}
+	}
+	props := map[string]string{}
+	for _, line := range strings.Split(string(out), "\n") {
+		if k, v, ok := strings.Cut(line, "="); ok {
+			props[k] = v
+		}
+	}
+	return ServiceInfo{
+		Installed: props["LoadState"] == "loaded",
+		Active:    props["ActiveState"] == "active",
+		Enabled:   props["UnitFileState"] == "enabled",
+	}
+}
+
+// the process name is 14 characters, under the kernel's 15-character comm limit
+func gameProcessRunning() bool {
+	return exec.Command("pgrep", "-x", "UNBEATABLE.exe").Run() == nil
+}
+
+// daemonLog is the daemon's last n log lines: the journal for the service,
+// or the launch wrapper's log file.
+func daemonLog(n int) string {
+	out, err := exec.Command("journalctl", "--user", "-u", unit, "-n", strconv.Itoa(n), "--no-pager", "-o", "short-iso").Output()
+	if err == nil && len(strings.TrimSpace(string(out))) > 0 && !strings.Contains(string(out), "-- No entries --") {
+		return strings.TrimSpace(string(out))
+	}
+	state := filepath.Join(os.Getenv("HOME"), ".local", "state")
+	if dir := os.Getenv("XDG_STATE_HOME"); dir != "" {
+		state = dir
+	}
+	data, err := os.ReadFile(filepath.Join(state, "unbeatable-rpc", "daemon.log"))
+	if err != nil {
+		return ""
+	}
+	return lastLines(string(data), n)
 }
 
 // uninstallerPath is the copy of install.sh the installer puts next to this app.

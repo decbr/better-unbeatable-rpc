@@ -8,6 +8,8 @@ let overridden = [];  // keys the daemon says are set by env or flags
 let effective = null;  // the settings the daemon is using, when it's running
 let timerStart = 0; // unix seconds of the shown activity's timer, or 0
 let lastDaemonConfig = ""; // the daemon's settings at the last poll, to spot outside edits
+let lastStatus = null;  // the last App.Status result
+let health = null;      // the last App.Health result: checks, mod version, game open
 
 const DROP_IN = "~/.config/systemd/user/unbeatable-rpc.service.d/override.conf";
 
@@ -72,7 +74,13 @@ function renderAdvanced() {
   form.clientId.placeholder = view.defaults.clientId;
   form.socket.value = file.socket || "";
   form.verbose.checked = !!file.verbose;
+  renderShowSwitch();
   applyLocks();
+}
+
+function renderShowSwitch() {
+  const hidden = overridden.includes("hidden") && effective ? effective.hidden : file.hidden;
+  $("show-on-discord").checked = !hidden;
 }
 
 function applyLocks() {
@@ -84,6 +92,9 @@ function applyLocks() {
     note.textContent = `The style is set by ${view.envVars.style} (or --style) in the daemon's environment, which wins over this app. ` +
       `Remove it from ${DROP_IN}, then run: systemctl --user daemon-reload && systemctl --user restart unbeatable-rpc`;
   }
+  const show = $("show-on-discord");
+  show.disabled = overridden.includes("hidden");
+  show.title = show.disabled ? `Set by ${view.envVars.hidden} in the daemon's environment` : "";
   const form = $("advanced");
   for (const key of ["largeImage", "clientId", "socket", "verbose"]) {
     const input = form[key];
@@ -109,6 +120,8 @@ async function save(change) {
     alert("Couldn't save the settings: " + err);
   }
 }
+
+$("show-on-discord").addEventListener("change", (e) => save({ hidden: !e.target.checked }));
 
 $("advanced").addEventListener("change", (e) => {
   const input = e.target;
@@ -146,16 +159,17 @@ async function refreshStatus() {
     ds = { running: false, error: String(err) };
   }
 
+  lastStatus = ds;
   $("daemon-up").hidden = !ds.running;
   $("daemon-down").hidden = ds.running;
-  $("daemon-version").hidden = !ds.running;
+  renderHelp();
+  renderVersions();
   if (!ds.running) {
     timerStart = 0;
     return;
   }
 
   const st = ds.status;
-  $("daemon-version").textContent = "Daemon " + st.version;
 
   $("game").textContent = st.gameRunning
     ? "Running" + (st.lastHeard ? ` (last heard ${ago(st.lastHeard)})` : "")
@@ -169,6 +183,9 @@ async function refreshStatus() {
   const a = st.activity;
   $("presence").hidden = !a;
   $("presence-empty").hidden = !!a;
+  $("presence-empty").textContent = st.hidden
+    ? "Hidden from Discord. Tick Show on Discord to put it back."
+    : "Nothing shown in Discord right now.";
   if (a) {
     $("p-details").textContent = a.details || "";
     $("p-state").textContent = a.state || "";
@@ -188,6 +205,7 @@ async function refreshStatus() {
     overridden = newOverridden;
     renderStyles();
   }
+  renderShowSwitch();
 
   // The settings file was changed by something else (an editor, another
   // window): re-read it so the page shows what's in force.
@@ -271,6 +289,172 @@ async function renderLocations() {
   }
 }
 
+/* setup checks and help */
+
+const MARKS = { ok: "✓", warn: "!", bad: "✕", unknown: "?" };
+
+async function refreshHealth() {
+  const wasOpen = health && health.gameOpen;
+  health = await api().Health();
+  const list = $("checks");
+  list.replaceChildren();
+  for (const c of health.checks) {
+    const li = document.createElement("li");
+    const mark = document.createElement("span");
+    mark.className = "check-mark " + c.level;
+    mark.textContent = MARKS[c.level] || "?";
+    const text = document.createElement("span");
+    const label = document.createElement("span");
+    label.className = "check-label";
+    label.textContent = c.label + ": ";
+    text.append(label, c.detail);
+    li.append(mark, text);
+    if (c.fix && c.level !== "ok") {
+      const fix = document.createElement("span");
+      fix.className = "check-fix";
+      fix.textContent = c.fix;
+      li.append(fix);
+    }
+    list.append(li);
+  }
+  renderHelp();
+  renderVersions();
+  if (wasOpen !== health.gameOpen) loadPluginSettings();
+}
+
+// renderHelp explains the problem the status shows, where there is one.
+function renderHelp() {
+  const lines = [];
+  const ds = lastStatus;
+  if (ds && ds.running) {
+    const st = ds.status;
+    if (st.gameRunning && st.discord.lastError) {
+      lines.push("Can't reach Discord. In Vesktop, turn on Settings → Rich Presence (arRPC). " +
+        "In Discord, turn on User Settings → Activity Privacy → Share your detected activities. " +
+        "If Discord's socket is somewhere unusual, set its path under Advanced.");
+    }
+    if (health && health.gameOpen && !st.gameRunning) {
+      lines.push("The game is open but the mod isn't sending anything. Setup below shows what's wrong.");
+    }
+    if (st.activity && st.discord.connected) {
+      lines.push("Not on your profile? Discord shows one game at a time, so another app's status can take its place.");
+    }
+  }
+  const box = $("help");
+  box.replaceChildren(...lines.map((t) => Object.assign(document.createElement("p"), { textContent: t })));
+  box.hidden = lines.length === 0;
+}
+
+// Go checks the copy really landed; if it didn't, the report is shown
+// selected so Ctrl+C works.
+$("copy-diagnostics").addEventListener("click", async () => {
+  const btn = $("copy-diagnostics");
+  const err = $("diagnostics-error");
+  const box = $("diagnostics-text");
+  btn.disabled = true;
+  err.hidden = true;
+  box.hidden = true;
+  const text = await api().Diagnostics();
+  try {
+    await api().CopyText(text);
+    btn.textContent = "Copied";
+    setTimeout(() => (btn.textContent = "Copy diagnostics"), 1500);
+  } catch (e) {
+    err.textContent = "Couldn't copy it automatically. It's selected below: press Ctrl+C.";
+    err.hidden = false;
+    box.value = text;
+    box.hidden = false;
+    box.focus();
+    box.select();
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* advanced: daemon service, mod settings, versions */
+
+async function loadService() {
+  const info = await api().ServiceInfo();
+  $("service-controls").hidden = !info.installed;
+  $("start-at-login").checked = info.enabled;
+}
+
+function showServiceError(e) {
+  const err = $("service-error");
+  err.textContent = e ? String(e) : "";
+  err.hidden = !e;
+}
+
+$("restart-daemon").addEventListener("click", async () => {
+  const btn = $("restart-daemon");
+  btn.disabled = true;
+  showServiceError(null);
+  try {
+    await api().RestartDaemon();
+    setTimeout(refreshStatus, 800);
+  } catch (e) {
+    showServiceError(e);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("start-at-login").addEventListener("change", async (e) => {
+  showServiceError(null);
+  try {
+    await api().SetStartAtLogin(e.target.checked);
+  } catch (err) {
+    showServiceError(err);
+  }
+  loadService();
+});
+
+async function loadPluginSettings() {
+  const ps = await api().PluginSettings();
+  const disable = $("disable-game-discord");
+  const debug = $("debug-logging");
+  disable.checked = ps.disableGameDiscord;
+  debug.checked = ps.debugLogging;
+  disable.disabled = debug.disabled = !ps.available || ps.locked;
+  $("plugin-note").textContent = !ps.path
+    ? "The game folder isn't known, so these can't be changed here."
+    : !ps.available
+      ? "Launch the game once to create the mod's settings."
+      : ps.locked
+        ? "Close the game to change these: it rewrites this file while running. They apply next launch."
+        : "These apply the next time you launch the game.";
+}
+
+let pluginSavedTimer = 0;
+
+for (const id of ["disable-game-discord", "debug-logging"]) {
+  $(id).addEventListener("change", async () => {
+    const err = $("plugin-error");
+    err.hidden = true;
+    try {
+      await api().SavePluginSettings($("disable-game-discord").checked, $("debug-logging").checked);
+      const saved = $("plugin-saved");
+      saved.hidden = false;
+      clearTimeout(pluginSavedTimer);
+      pluginSavedTimer = setTimeout(() => (saved.hidden = true), 1500);
+    } catch (e) {
+      err.textContent = String(e);
+      err.hidden = false;
+    }
+    loadPluginSettings();
+  });
+}
+
+let appVersion = "";
+
+function renderVersions() {
+  const parts = [];
+  if (appVersion) parts.push("App " + appVersion);
+  if (lastStatus && lastStatus.running) parts.push("Daemon " + lastStatus.status.version);
+  if (health && health.pluginVersion) parts.push("Mod " + health.pluginVersion + " (last launch)");
+  $("versions").textContent = parts.join(" · ");
+}
+
 /* start */
 
 (async () => {
@@ -280,11 +464,16 @@ async function renderLocations() {
   renderStyles();
   renderAdvanced();
   renderLocations();
+  appVersion = await api().AppVersion();
+  loadService();
+  loadPluginSettings();
   if (view.fileError) {
     $("config-error").textContent = "Settings file problem: " + view.fileError;
     $("config-error").hidden = false;
   }
   await refreshStatus();
+  await refreshHealth();
   setInterval(refreshStatus, 2000);
+  setInterval(refreshHealth, 2000);
   setInterval(tickTimer, 1000);
 })();

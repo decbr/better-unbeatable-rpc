@@ -3,6 +3,7 @@ package main
 import (
 	"embed"
 	"log"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -13,7 +14,13 @@ import (
 //go:embed all:frontend
 var assets embed.FS
 
+// version is set by the Makefile.
+var version = "dev"
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == clipboardHelperFlag {
+		os.Exit(clipboardHelper())
+	}
 	app := NewApp()
 	err := wails.Run(&options.App{
 		Title:            "UNBEATABLE RPC",

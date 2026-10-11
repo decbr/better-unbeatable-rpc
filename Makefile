@@ -37,7 +37,7 @@ daemon:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags="-s -w" -o bin/fakegame ./daemon/cmd/fakegame
 
 gui:
-	cd gui && $(GO) build -tags $(GUI_TAGS) -trimpath -ldflags="-s -w" -o ../bin/unbeatable-rpc-settings .
+	cd gui && $(GO) build -tags $(GUI_TAGS) -trimpath -ldflags="-s -w -X main.version=$(VERSION)" -o ../bin/unbeatable-rpc-settings .
 
 test:
 	$(GO) vet ./...

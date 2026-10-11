@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/config"
 	"github.com/decbr/better-unbeatable-rpc/daemon/presence"
@@ -132,4 +133,9 @@ func TestLoadKeepsRegistryOrder(t *testing.T) {
 	if want := presence.StyleNames(); strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("app lists %v, registry order is %v", got, want)
 	}
+}
+
+func timeNowPlus(t *testing.T, seconds int) time.Time {
+	t.Helper()
+	return time.Now().Add(time.Duration(seconds) * time.Second)
 }

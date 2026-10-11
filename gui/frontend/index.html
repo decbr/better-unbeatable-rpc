@@ -11,6 +11,7 @@
     <section class="card" id="status">
       <header>
         <h2>Status</h2>
+        <label class="check small-check"><input type="checkbox" id="show-on-discord"> Show on Discord</label>
       </header>
       <div id="daemon-down" hidden>
         <p>The daemon isn't running, so nothing is sent to Discord.</p>
@@ -37,6 +38,18 @@
         <p class="dim" id="presence-empty">Nothing shown in Discord right now.</p>
         <p class="error" id="config-error" hidden></p>
       </div>
+      <div class="help" id="help" hidden></div>
+    </section>
+
+    <section class="card">
+      <header>
+        <h2>Setup</h2>
+        <button class="quiet" id="copy-diagnostics">Copy diagnostics</button>
+      </header>
+      <ul class="checks" id="checks"></ul>
+      <p class="dim small">Copy diagnostics includes file paths; paste it into a GitHub issue when reporting a problem.</p>
+      <p class="error" id="diagnostics-error" hidden></p>
+      <textarea class="diagnostics" id="diagnostics-text" readonly hidden></textarea>
     </section>
 
     <section class="card">
@@ -58,6 +71,7 @@
 
     <details class="card">
       <summary><h2>Advanced</h2></summary>
+      <h3>Daemon</h3>
       <form id="advanced">
         <label>Large image asset key
           <input name="largeImage" placeholder="logo">
@@ -72,7 +86,21 @@
           <input type="checkbox" name="verbose"> Verbose logging
         </label>
       </form>
-      <p class="dim small" id="daemon-version" hidden></p>
+      <div class="controls" id="service-controls" hidden>
+        <button class="quiet" id="restart-daemon">Restart daemon</button>
+        <label class="check"><input type="checkbox" id="start-at-login"> Start at login</label>
+      </div>
+      <p class="error" id="service-error" hidden></p>
+
+      <h3>Game <span class="saved" id="plugin-saved" hidden>Saved</span></h3>
+      <div class="plugin-settings" id="plugin-settings">
+        <label class="check"><input type="checkbox" id="disable-game-discord"> Turn off the game's own Discord integration</label>
+        <label class="check"><input type="checkbox" id="debug-logging"> Debug logging (in BepInEx's LogOutput.log)</label>
+      </div>
+      <p class="dim small" id="plugin-note"></p>
+      <p class="error" id="plugin-error" hidden></p>
+
+      <p class="dim small" id="versions"></p>
       <div class="uninstall">
         <label class="check">
           <input type="checkbox" id="uninstall-all"> Also remove BepInEx and the Proton prefix change

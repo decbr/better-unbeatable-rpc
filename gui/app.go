@@ -117,6 +117,7 @@ func (a *App) StartDaemon() error            { return startDaemon() }
 func (a *App) RestartDaemon() error          { return restartDaemon() }
 func (a *App) ServiceInfo() ServiceInfo      { return serviceInfo() }
 func (a *App) SetStartAtLogin(on bool) error { return setStartAtLogin(on) }
+func (a *App) DaemonLog() string             { return daemonLog(200) }
 
 // Versions for the Advanced section; the mod's is from its last launch.
 func (a *App) AppVersion() string { return version }

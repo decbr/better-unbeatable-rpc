@@ -786,6 +786,8 @@ function showTab(name) {
   }
   $("tab-status").hidden = name !== "status";
   $("tab-styles").hidden = name !== "styles";
+  $("tab-daemon").hidden = name !== "daemon";
+  if (name === "daemon") refreshLog();
 }
 
 for (const tab of document.querySelectorAll(".tab")) {
@@ -1035,7 +1037,90 @@ $("copy-diagnostics").addEventListener("click", async () => {
   }
 });
 
-/* advanced: daemon service, mod settings, versions */
+/* daemon tab: log, service controls */
+
+// journal (short-iso): "<time> <host> <unit>[<pid>]: <message>"
+const JOURNAL_RE = /^(\d{4}-\d\d-\d\d)T(\d\d:\d\d:\d\d)\S* \S+ ([^\[:]+)(?:\[\d+\])?: (.*)$/;
+// Go's log prefix, in the journal and the launch wrapper's file: "unbeatable-rpc: 2026/10/14 16:01:27 <message>"
+const GOLOG_RE = /^unbeatable-rpc: (\d{4})\/(\d\d)\/(\d\d) (\d\d:\d\d:\d\d) (.*)$/;
+const LOG_LEVELS = [
+  ["bad", /fail|cannot|lost|error|ignoring|not reloaded/i],
+  ["warn", /stopp|game closed|no heartbeat|cleared/i],
+  ["good", /activity set|connected to|game is running|^started|listening on/i],
+];
+
+function span(cls, text) {
+  const el = document.createElement("span");
+  el.className = cls;
+  el.textContent = text;
+  return el;
+}
+
+// logLine turns one raw line into a row: time, source, then the message,
+// with its "key:" prefix dimmed and the whole thing coloured by what it means.
+function logLine(raw, prev) {
+  let date = "", time = "", source = "", msg = raw;
+  let m = JOURNAL_RE.exec(raw);
+  if (m) [, date, time, source, msg] = m;
+  const g = GOLOG_RE.exec(msg);
+  if (g) {
+    date = date || `${g[1]}-${g[2]}-${g[3]}`;
+    time = time || g[4];
+    source = "daemon";
+    msg = g[5];
+  } else if (source === "unbeatable-rpc") {
+    source = "daemon";
+  }
+
+  const rows = [];
+  if (date && date !== prev.date) {
+    rows.push(span("log-date", date));
+    prev.date = date;
+  }
+  const row = document.createElement("div");
+  row.className = "log-row";
+  if (time) row.append(span("log-time", time));
+  if (source) row.append(span("log-source " + source, source));
+  const level = (LOG_LEVELS.find(([, re]) => re.test(msg)) || [""])[0];
+  const text = span("log-msg " + level, "");
+  const key = /^([a-zA-Z_ ]+): (.*)$/.exec(msg);
+  if (key) text.append(span("log-key", key[1] + ": "), key[2]);
+  else text.textContent = msg;
+  row.append(text);
+  rows.push(row);
+  return rows;
+}
+
+let logText = null;
+
+async function refreshLog() {
+  if ($("tab-daemon").hidden) return;
+  const box = $("daemon-log");
+  const text = await api().DaemonLog();
+  $("log-empty").hidden = text !== "";
+  box.hidden = text === "";
+  if (text === logText) return;
+  logText = text;
+  // stay at the bottom for new lines, unless scrolled up to read
+  const pinned = box.scrollHeight - box.scrollTop - box.clientHeight < 20;
+  const prev = { date: "" };
+  box.replaceChildren(...text.split("\n").flatMap((l) => logLine(l, prev)));
+  if (pinned) box.scrollTop = box.scrollHeight;
+}
+
+$("copy-log").addEventListener("click", async () => {
+  const btn = $("copy-log");
+  showServiceError(null);
+  try {
+    await api().CopyText(logText || "");
+    btn.textContent = "Copied";
+    setTimeout(() => (btn.textContent = "Copy"), 1500);
+  } catch (e) {
+    showServiceError(e);
+  }
+});
+
+/* advanced: mod settings, versions */
 
 async function loadService() {
   const info = await api().ServiceInfo();
@@ -1143,5 +1228,6 @@ function renderVersions() {
   await refreshHealth();
   setInterval(refreshStatus, 2000);
   setInterval(refreshHealth, 2000);
+  setInterval(refreshLog, 2000);
   setInterval(tickTimer, 1000);
 })();

@@ -10,6 +10,7 @@
   <nav class="tabs" role="tablist">
     <button class="tab" role="tab" data-tab="status">Status</button>
     <button class="tab" role="tab" data-tab="styles">Styles</button>
+    <button class="tab" role="tab" data-tab="daemon">Daemon</button>
     <span class="saved" id="saved" hidden>Saved</span>
   </nav>
   <main id="tab-status" role="tabpanel">
@@ -82,11 +83,6 @@
           <input type="checkbox" name="verbose"> Verbose logging
         </label>
       </form>
-      <div class="controls" id="service-controls" hidden>
-        <button class="quiet" id="restart-daemon">Restart daemon</button>
-        <label class="check"><input type="checkbox" id="start-at-login"> Start at login</label>
-      </div>
-      <p class="error" id="service-error" hidden></p>
 
       <h3>Game <span class="saved" id="plugin-saved" hidden>Saved</span></h3>
       <div class="plugin-settings" id="plugin-settings">
@@ -105,6 +101,22 @@
         <p class="error" id="uninstall-error" hidden></p>
       </div>
     </details>
+  </main>
+
+  <main id="tab-daemon" role="tabpanel" hidden>
+    <section class="card">
+      <header>
+        <h2>Log</h2>
+        <button class="quiet" id="copy-log">Copy</button>
+      </header>
+      <div class="daemon-log" id="daemon-log"></div>
+      <p class="dim small" id="log-empty" hidden>No log yet.</p>
+      <div class="controls" id="service-controls" hidden>
+        <button class="quiet" id="restart-daemon">Restart daemon</button>
+        <label class="check"><input type="checkbox" id="start-at-login"> Start at login</label>
+      </div>
+      <p class="error" id="service-error" hidden></p>
+    </section>
   </main>
 
   <main id="tab-styles" role="tabpanel" hidden>

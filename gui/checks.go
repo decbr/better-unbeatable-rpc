@@ -41,13 +41,14 @@ type Health struct {
 func (a *App) Health() Health {
 	game := installedGameDir()
 	h := Health{GameOpen: gameProcessRunning()}
+	daemon, daemonErr := status.Fetch(a.ctx, a.statusPort)
+	h.Checks = []Check{daemonCheck(daemonErr == nil, daemon.Version, serviceInfo())}
 	if game == "" {
-		h.Checks = []Check{{Key: "game", Label: "Game folder", Level: levelUnknown,
+		h.Checks = append(h.Checks, Check{Key: "game", Label: "Game folder", Level: levelUnknown,
 			Detail: "Not known: the mod wasn't installed with install.sh, so these checks can't run.",
-			Fix:    "Re-run ./install.sh from the release folder."}}
+			Fix:    "Re-run ./install.sh from the release folder."})
 		return h
 	}
-	daemon, daemonErr := status.Fetch(a.ctx, a.statusPort)
 
 	h.Checks = append(h.Checks, fileCheck("bepinex", "BepInEx", "Installed", "Not installed in the game folder.",
 		filepath.Join(game, "BepInEx", "core", "BepInEx.dll"), filepath.Join(game, "winhttp.dll")))
@@ -79,6 +80,25 @@ func (a *App) Health() Health {
 		h.Checks = append(h.Checks, c)
 	}
 	return h
+}
+
+func daemonCheck(running bool, version string, svc ServiceInfo) Check {
+	c := Check{Key: "daemon", Label: "Daemon"}
+	switch {
+	case running && svc.Installed:
+		c.Level, c.Detail = levelOK, "Running "+version+", as a systemd service"
+		if svc.Enabled {
+			c.Detail += " that starts at login"
+		}
+		c.Detail += "."
+	case running:
+		c.Level, c.Detail = levelOK, "Running "+version+" (launch wrapper)."
+	case svc.Installed:
+		c.Level, c.Detail, c.Fix = levelBad, "Not running.", "Start or restart it on the Daemon tab."
+	default:
+		c.Level, c.Detail = levelUnknown, "Not running. With the launch wrapper it starts with the game."
+	}
+	return c
 }
 
 func fileCheck(key, label, ok, missing string, paths ...string) Check {

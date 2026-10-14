@@ -86,7 +86,7 @@ Open **UNBEATABLE RPC** first. Its **Setup** section checks BepInEx, the mod, th
 **Nothing shows up in Discord**
 - Vesktop: Settings → *Rich Presence (arRPC)* must be on.
 - Discord: User Settings → Activity Privacy → *Share your detected activities with others* must be on.
-- Check `journalctl --user -u unbeatable-rpc`:
+- Check the daemon's log on the app's **Daemon** tab (or `journalctl --user -u unbeatable-rpc`):
   - `activity set: …`: the daemon is working.
   - `cannot reach Discord`: no Discord socket found. Flatpak Vesktop is found automatically; otherwise set the socket path in the settings app (Advanced) to the one from `ss -xlp | grep discord-ipc`.
   - No `game is running`: the plugin isn't loading. Check `<game>/BepInEx/LogOutput.log` exists, and re-run `./install.sh` if not.

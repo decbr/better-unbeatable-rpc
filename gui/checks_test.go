@@ -78,8 +78,8 @@ func TestHealthWithoutInstallerState(t *testing.T) {
 	a := newTestApp(t)
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	h := a.Health()
-	if len(h.Checks) != 1 || h.Checks[0].Level != levelUnknown {
-		t.Errorf("got %+v, want one unknown check", h.Checks)
+	if len(h.Checks) != 2 || h.Checks[0].Key != "daemon" || h.Checks[1].Level != levelUnknown {
+		t.Errorf("got %+v, want the daemon check then one unknown check", h.Checks)
 	}
 }
 
@@ -108,5 +108,25 @@ func TestHealthFullInstall(t *testing.T) {
 	}
 	if h.PluginVersion != "0.1.0" {
 		t.Errorf("plugin version %q", h.PluginVersion)
+	}
+}
+
+func TestDaemonCheck(t *testing.T) {
+	for _, tc := range []struct {
+		running bool
+		svc     ServiceInfo
+		level   string
+		detail  string
+	}{
+		{true, ServiceInfo{Installed: true, Enabled: true}, levelOK, "Running 0.3.0, as a systemd service that starts at login."},
+		{true, ServiceInfo{Installed: true}, levelOK, "Running 0.3.0, as a systemd service."},
+		{true, ServiceInfo{}, levelOK, "Running 0.3.0 (launch wrapper)."},
+		{false, ServiceInfo{Installed: true}, levelBad, "Not running."},
+		{false, ServiceInfo{}, levelUnknown, "Not running. With the launch wrapper it starts with the game."},
+	} {
+		c := daemonCheck(tc.running, "0.3.0", tc.svc)
+		if c.Level != tc.level || c.Detail != tc.detail {
+			t.Errorf("%v %+v: got %s %q", tc.running, tc.svc, c.Level, c.Detail)
+		}
 	}
 }

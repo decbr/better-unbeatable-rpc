@@ -189,7 +189,7 @@ func (a *App) Uninstall(all bool) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	msg := "This removes the plugin, the daemon and its service, this app, and your settings."
+	msg := "This removes the plugin, the daemon, this app, and your settings."
 	if all {
 		msg += "\n\n" + uninstallAllText
 	}

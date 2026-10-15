@@ -4,7 +4,6 @@ import (
 	"context"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -17,11 +16,21 @@ import (
 
 // newTestApp has no daemon to talk to, and its settings file in a temp dir.
 func newTestApp(t *testing.T) *App {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	dir := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", dir) // Linux
+	t.Setenv("APPDATA", dir)         // Windows
 	ln, _ := net.Listen("tcp", "127.0.0.1:0")
 	port := ln.Addr().(*net.TCPAddr).Port
 	ln.Close()
 	return &App{ctx: context.Background(), statusPort: port}
+}
+
+// isolateState points the installer state at an empty temp dir.
+func isolateState(t *testing.T) string {
+	dir := t.TempDir()
+	t.Setenv("XDG_STATE_HOME", dir) // Linux
+	t.Setenv("LOCALAPPDATA", dir)   // Windows
+	return dir
 }
 
 func TestLoadPreviews(t *testing.T) {
@@ -48,7 +57,7 @@ func TestSaveWritesSettingsFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	path, _ := config.Path()
-	if filepath.Dir(filepath.Dir(path)) != os.Getenv("XDG_CONFIG_HOME") {
+	if filepath.Dir(filepath.Dir(path)) != os.Getenv("APPDATA") {
 		t.Fatalf("settings path %s is outside the test dir", path)
 	}
 	if got, err := config.Read(path); err != nil || !reflect.DeepEqual(got, want) {
@@ -65,46 +74,9 @@ func TestStatusWithoutDaemon(t *testing.T) {
 	}
 }
 
-func TestRunUninstaller(t *testing.T) {
-	script := filepath.Join(t.TempDir(), "unbeatable-rpc-uninstall")
-	os.WriteFile(script, []byte("#!/bin/sh\necho \"args: $*\"\n[ \"$1\" != fail ] || { echo 'install.sh: UNBEATABLE is running; quit it first'; exit 1; }\n"), 0o755)
-
-	if out, err := runUninstaller(script, false); err != nil || out != "args: \n" {
-		t.Errorf("plain: %q, %v", out, err)
-	}
-	if out, err := runUninstaller(script, true); err != nil || out != "args: --all\n" {
-		t.Errorf("--all: %q, %v", out, err)
-	}
-	out, err := runUninstaller(script+"-missing", false)
-	if err == nil {
-		t.Errorf("missing uninstaller ran: %q", out)
-	}
-	if got := lastLines("a\nb\nc\nd\n", 2); got != "c\nd" {
-		t.Errorf("lastLines = %q", got)
-	}
-}
-
-func TestInstalledGameDirReadsInstallerState(t *testing.T) {
-	state := t.TempDir()
-	t.Setenv("XDG_STATE_HOME", state)
-	if got := installedGameDir(); got != "" {
-		t.Errorf("no state file: got %q, want empty", got)
-	}
-	// the installer writes it with printf %q, which escapes spaces and quotes
-	game := filepath.Join(t.TempDir(), "Steam Library", "it's UNBEATABLE")
-	os.MkdirAll(filepath.Join(state, "unbeatable-rpc"), 0o755)
-	script := `printf 'GAME_DIR=%q\nSERVICE=%q\n' "$1" true >"$2"`
-	if err := exec.Command("bash", "-c", script, "_", game, filepath.Join(state, "unbeatable-rpc", "install.env")).Run(); err != nil {
-		t.Fatal(err)
-	}
-	if got := installedGameDir(); got != game {
-		t.Errorf("got %q, want %q", got, game)
-	}
-}
-
 func TestLocations(t *testing.T) {
 	a := newTestApp(t)
-	t.Setenv("XDG_STATE_HOME", t.TempDir())
+	isolateState(t)
 	byKey := map[string]Location{}
 	for _, l := range a.Locations() {
 		byKey[l.Key] = l

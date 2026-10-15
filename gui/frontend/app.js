@@ -12,6 +12,14 @@ let lastStatus = null;  // the last App.Status result
 let health = null;      // the last App.Health result: checks, mod version, game open
 
 const DROP_IN = "~/.config/systemd/user/unbeatable-rpc.service.d/override.conf";
+let platform = "linux";
+
+// renderPlatform swaps in the Windows wording.
+function renderPlatform() {
+  if (platform !== "windows") return;
+  $("socket-label").textContent = "Discord pipe path";
+  $("uninstall-all-what").textContent = "BepInEx, if the installer added it";
+}
 
 function api() {
   return window.go.main.App;
@@ -144,7 +152,9 @@ function applyLocks() {
   note.hidden = !styleLocked;
   if (styleLocked) {
     note.textContent = `The style is set by ${view.envVars.style} (or --style) in the daemon's environment, which wins over this app. ` +
-      `Remove it from ${DROP_IN}, then run: systemctl --user daemon-reload && systemctl --user restart unbeatable-rpc`;
+      (platform === "windows"
+        ? "Remove it from your environment variables, then restart the daemon on the Daemon tab."
+        : `Remove it from ${DROP_IN}, then run: systemctl --user daemon-reload && systemctl --user restart unbeatable-rpc`);
   }
   const show = $("show-on-discord");
   show.disabled = overridden.includes("hidden");
@@ -995,9 +1005,12 @@ function renderHelp() {
   if (ds && ds.running) {
     const st = ds.status;
     if (st.gameRunning && st.discord.lastError) {
-      lines.push("Can't reach Discord. In Vesktop, turn on Settings → Rich Presence (arRPC). " +
-        "In Discord, turn on User Settings → Activity Privacy → Share your detected activities. " +
-        "If Discord's socket is somewhere unusual, set its path under Advanced.");
+      lines.push(platform === "windows"
+        ? "Can't reach Discord. Check the Discord app is running, and turn on " +
+          "User Settings → Activity Privacy → Share your detected activities."
+        : "Can't reach Discord. In Vesktop, turn on Settings → Rich Presence (arRPC). " +
+          "In Discord, turn on User Settings → Activity Privacy → Share your detected activities. " +
+          "If Discord's socket is somewhere unusual, set its path under Advanced.");
     }
     if (health && health.gameOpen && !st.gameRunning) {
       lines.push("The game is open but the mod isn't sending anything. Setup below shows what's wrong.");
@@ -1218,6 +1231,8 @@ function renderVersions() {
   renderAdvanced();
   renderLocations();
   appVersion = await api().AppVersion();
+  platform = await api().Platform();
+  renderPlatform();
   loadService();
   loadPluginSettings();
   if (view.fileError) {

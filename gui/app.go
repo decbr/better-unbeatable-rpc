@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 
@@ -18,7 +19,7 @@ import (
 type App struct {
 	ctx        context.Context
 	statusPort int
-	regCache   regCache
+	platform   platformState
 }
 
 func NewApp() *App {
@@ -122,6 +123,9 @@ func (a *App) DaemonLog() string             { return daemonLog(200) }
 // Versions for the Advanced section; the mod's is from its last launch.
 func (a *App) AppVersion() string { return version }
 
+// Platform is "linux" or "windows", for the page's OS-specific wording.
+func (a *App) Platform() string { return goruntime.GOOS }
+
 type Location struct {
 	Key    string `json:"key"`
 	Label  string `json:"label"`
@@ -187,7 +191,7 @@ func (a *App) Uninstall(all bool) (bool, error) {
 	}
 	msg := "This removes the plugin, the daemon and its service, this app, and your settings."
 	if all {
-		msg += "\n\nIt also removes BepInEx and undoes the Proton prefix change, if the installer made them."
+		msg += "\n\n" + uninstallAllText
 	}
 	choice, err := runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
 		Type:    runtime.QuestionDialog,
@@ -205,12 +209,13 @@ func (a *App) Uninstall(all bool) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("uninstall failed: %s", lastLines(out, 3))
 	}
-	runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
-		Type:  runtime.InfoDialog,
-		Title: "Uninstalled",
-		Message: "UNBEATABLE RPC has been removed.\n\n" +
-			"If you added anything to UNBEATABLE's Steam launch options for this mod, remove it there too.",
-	})
+	if !uninstallerAfterExit {
+		runtime.MessageDialog(a.ctx, runtime.MessageDialogOptions{
+			Type:    runtime.InfoDialog,
+			Title:   "Uninstalled",
+			Message: "UNBEATABLE RPC has been removed.\n\n" + uninstalledText,
+		})
+	}
 	runtime.Quit(a.ctx)
 	return true, nil
 }

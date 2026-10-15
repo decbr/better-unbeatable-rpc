@@ -1,13 +1,11 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/status"
@@ -18,10 +16,6 @@ const (
 	levelWarn    = "warn"
 	levelBad     = "bad"
 	levelUnknown = "unknown"
-
-	appID           = "2240620"
-	launchOptions   = `WINEDLLOVERRIDES="winhttp=n,b" %command%`
-	overrideSection = `[Software\\Wine\\DllOverrides]`
 )
 
 type Check struct {
@@ -45,8 +39,8 @@ func (a *App) Health() Health {
 	h.Checks = []Check{daemonCheck(daemonErr == nil, daemon.Version, serviceInfo())}
 	if game == "" {
 		h.Checks = append(h.Checks, Check{Key: "game", Label: "Game folder", Level: levelUnknown,
-			Detail: "Not known: the mod wasn't installed with install.sh, so these checks can't run.",
-			Fix:    "Re-run ./install.sh from the release folder."})
+			Detail: "Not known: the mod wasn't installed with " + installerName + ", so these checks can't run.",
+			Fix:    "Re-run " + installerName + " from the release folder."})
 		return h
 	}
 
@@ -54,7 +48,7 @@ func (a *App) Health() Health {
 		filepath.Join(game, "BepInEx", "core", "BepInEx.dll"), filepath.Join(game, "winhttp.dll")))
 	h.Checks = append(h.Checks, fileCheck("plugin", "Mod", "Installed", "Not in BepInEx/plugins.",
 		filepath.Join(game, "BepInEx", "plugins", "UnbeatableRPC", "UnbeatableRPC.dll")))
-	h.Checks = append(h.Checks, a.loaderCheck(game))
+	h.Checks = append(h.Checks, a.platformChecks(game)...)
 
 	log := readBepInExLog(filepath.Join(game, "BepInEx", "LogOutput.log"))
 	h.PluginVersion = log.Version
@@ -86,17 +80,17 @@ func daemonCheck(running bool, version string, svc ServiceInfo) Check {
 	c := Check{Key: "daemon", Label: "Daemon"}
 	switch {
 	case running && svc.Installed:
-		c.Level, c.Detail = levelOK, "Running "+version+", as a systemd service"
+		c.Level, c.Detail = levelOK, "Running "+version+serviceText
 		if svc.Enabled {
-			c.Detail += " that starts at login"
+			c.Detail += startsAtLoginText
 		}
 		c.Detail += "."
 	case running:
-		c.Level, c.Detail = levelOK, "Running "+version+" (launch wrapper)."
+		c.Level, c.Detail = levelOK, "Running "+version+noServiceText
 	case svc.Installed:
 		c.Level, c.Detail, c.Fix = levelBad, "Not running.", "Start or restart it on the Daemon tab."
 	default:
-		c.Level, c.Detail = levelUnknown, "Not running. With the launch wrapper it starts with the game."
+		c.Level, c.Detail = levelUnknown, noServiceStoppedText
 	}
 	return c
 }
@@ -108,29 +102,6 @@ func fileCheck(key, label, ok, missing string, paths ...string) Check {
 		}
 	}
 	return Check{Key: key, Label: label, Level: levelOK, Detail: ok}
-}
-
-func (a *App) loaderCheck(game string) Check {
-	c := Check{Key: "loader", Label: "BepInEx loading"}
-	reg := prefixRegistry(game)
-	value, err := a.regCache.winhttpOverride(reg)
-	switch {
-	case os.IsNotExist(err):
-		c.Level = levelUnknown
-		c.Detail = "The game's Proton prefix doesn't exist yet."
-		c.Fix = "Launch the game once, then re-run the installer, or set the launch options to " + launchOptions
-	case err != nil:
-		c.Level = levelUnknown
-		c.Detail = "Couldn't read the Proton prefix: " + err.Error()
-	case strings.HasPrefix(value, "native"):
-		c.Level = levelOK
-		c.Detail = "Set up in the Proton prefix; no launch options needed."
-	default:
-		c.Level = levelWarn
-		c.Detail = "Not set up in the Proton prefix."
-		c.Fix = "Set the game's launch options to " + launchOptions + ", or re-run the installer to store it in the prefix."
-	}
-	return c
 }
 
 func loadedCheck(log bepinexLog) Check {
@@ -167,66 +138,6 @@ func ago(t time.Time) string {
 	default:
 		return t.Format("2 Jan")
 	}
-}
-
-// prefixRegistry is the Proton prefix's user.reg, as install.sh finds it:
-// <library>/steamapps/common/UNBEATABLE -> <library>/steamapps/compatdata/<app>/pfx.
-func prefixRegistry(game string) string {
-	lib := filepath.Clean(filepath.Join(game, "..", "..", ".."))
-	return filepath.Join(lib, "steamapps", "compatdata", appID, "pfx", "user.reg")
-}
-
-// regCache remembers the winhttp override per user.reg until the file
-// changes: the file is megabytes and the page polls every 2 s.
-type regCache struct {
-	mu    sync.Mutex
-	path  string
-	stamp time.Time
-	size  int64
-	value string
-}
-
-func (c *regCache) winhttpOverride(path string) (string, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		return "", err
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.path == path && c.stamp.Equal(fi.ModTime()) && c.size == fi.Size() {
-		return c.value, nil
-	}
-	value, err := winhttpOverride(path)
-	if err != nil {
-		return "", err
-	}
-	c.path, c.stamp, c.size, c.value = path, fi.ModTime(), fi.Size(), value
-	return value, nil
-}
-
-// winhttpOverride reads "winhttp" from the DllOverrides section, like
-// install.sh's registry_override. Empty if it isn't set.
-func winhttpOverride(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 64*1024), 1024*1024)
-	inside := false
-	for sc.Scan() {
-		line := sc.Text()
-		switch {
-		case strings.HasPrefix(line, overrideSection):
-			inside = true
-		case inside && line == "":
-			return "", nil
-		case inside && strings.HasPrefix(line, `"winhttp"="`):
-			return strings.TrimSuffix(strings.TrimPrefix(line, `"winhttp"="`), `"`), nil
-		}
-	}
-	return "", sc.Err()
 }
 
 type bepinexLog struct {

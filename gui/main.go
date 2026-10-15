@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 	"log"
 	"os"
@@ -31,6 +32,7 @@ func main() {
 		AssetServer:      &assetserver.Options{Assets: frontendFS()},
 		BackgroundColour: &options.RGBA{R: 30, G: 31, B: 34, A: 255},
 		OnStartup:        app.startup,
+		OnDomReady:       func(context.Context) { setWindowIcon() },
 		Bind:             []interface{}{app},
 		Linux:            &linux.Options{ProgramName: "unbeatable-rpc-settings"},
 	})

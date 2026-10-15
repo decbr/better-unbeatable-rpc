@@ -129,3 +129,18 @@ func openFolder(path string) error {
 	go cmd.Wait()
 	return nil
 }
+
+const (
+	serviceText          = ", as a systemd service"
+	startsAtLoginText    = " that starts at login"
+	noServiceText        = " (launch wrapper)."
+	noServiceStoppedText = "Not running. With the launch wrapper it starts with the game."
+	uninstallAllText     = "It also removes BepInEx and undoes the Proton prefix change, if the installer made them."
+	uninstalledText      = "If you added anything to UNBEATABLE's Steam launch options for this mod, remove it there too."
+	uninstallerAfterExit = false
+	installerName        = "./install.sh"
+)
+
+func platformDetails() string {
+	return fmt.Sprintf("desktop %s, session %s", orNone(os.Getenv("XDG_CURRENT_DESKTOP")), orNone(os.Getenv("XDG_SESSION_TYPE")))
+}

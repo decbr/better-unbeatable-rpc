@@ -37,8 +37,7 @@ func (a *App) diagnostics() string {
 
 	fmt.Fprintf(&b, "UNBEATABLE RPC diagnostics, %s\n", time.Now().Format("2006-01-02 15:04 MST"))
 	fmt.Fprintf(&b, "App %s, daemon %s, mod %s (last launch)\n", version, daemonVersion, pluginVersion)
-	fmt.Fprintf(&b, "%s/%s, desktop %s, session %s, game open: %v\n", goruntime.GOOS, goruntime.GOARCH,
-		orNone(os.Getenv("XDG_CURRENT_DESKTOP")), orNone(os.Getenv("XDG_SESSION_TYPE")), h.GameOpen)
+	fmt.Fprintf(&b, "%s/%s, %s, game open: %v\n", goruntime.GOOS, goruntime.GOARCH, platformDetails(), h.GameOpen)
 
 	section("Checks")
 	for _, c := range h.Checks {

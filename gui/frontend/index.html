@@ -76,7 +76,7 @@
         <label>Discord application ID
           <input name="clientId" inputmode="numeric">
         </label>
-        <label>Discord socket path
+        <label><span id="socket-label">Discord socket path</span>
           <input name="socket" placeholder="found automatically">
         </label>
         <label class="check">
@@ -95,7 +95,7 @@
       <p class="dim small" id="versions"></p>
       <div class="uninstall">
         <label class="check">
-          <input type="checkbox" id="uninstall-all"> Also remove BepInEx and the Proton prefix change
+          <input type="checkbox" id="uninstall-all"> Also remove <span id="uninstall-all-what">BepInEx and the Proton prefix change</span>
         </label>
         <button class="danger" id="uninstall">Uninstall…</button>
         <p class="error" id="uninstall-error" hidden></p>

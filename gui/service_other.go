@@ -1,12 +1,10 @@
-//go:build !linux
+//go:build !linux && !windows
 
 package main
 
 import (
-	"context"
 	"errors"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"runtime"
 )
 
 var errUnsupported = errors.New("not supported on this OS yet")
@@ -32,8 +30,19 @@ func installedGameDir() string { return "" }
 
 func openFolder(string) error { return errUnsupported }
 
-const clipboardHelperFlag = "--copy-to-clipboard"
+type platformState struct{}
 
-func copyText(ctx context.Context, text string) error { return runtime.ClipboardSetText(ctx, text) }
+func (a *App) platformChecks(string) []Check { return nil }
 
-func clipboardHelper() int { return 1 }
+func platformDetails() string { return runtime.GOOS }
+
+const (
+	serviceText          = ""
+	startsAtLoginText    = ""
+	noServiceText        = "."
+	noServiceStoppedText = "Not running."
+	uninstallAllText     = "It also removes BepInEx, if the installer added it."
+	uninstalledText      = ""
+	uninstallerAfterExit = false
+	installerName        = "the installer"
+)

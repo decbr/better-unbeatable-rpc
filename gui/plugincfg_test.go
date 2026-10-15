@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -29,7 +30,7 @@ func TestPluginConfigRoundTrip(t *testing.T) {
 	if string(data) != want {
 		t.Errorf("rewrote to:\n%q\nwant:\n%q", data, want)
 	}
-	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o640 {
+	if fi, _ := os.Stat(path); runtime.GOOS != "windows" && fi.Mode().Perm() != 0o640 {
 		t.Errorf("mode changed to %v", fi.Mode().Perm())
 	}
 	entries, _ := os.ReadDir(filepath.Dir(path))

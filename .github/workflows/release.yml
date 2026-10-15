@@ -1,4 +1,6 @@
-# builds the Linux tarball and the Windows zip, and publishes a GitHub release when a version tag is pushed:
+# tests every push to main and every PR, on Linux and Windows.
+# on a version tag it also builds the Linux tarball and the Windows zip,
+# and publishes a GitHub release:
 #
 #   scripts/bump-version.sh 0.2.0   # sets the version, builds plugin/dist/, commits, tags v0.2.0
 #   git push --follow-tags
@@ -10,7 +12,9 @@ name: release
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+  pull_request:
 
 permissions:
   contents: read
@@ -64,6 +68,7 @@ jobs:
       - run: make test-gui
 
   release:
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [test, test-windows, test-gui]
     runs-on: ubuntu-latest
     permissions:

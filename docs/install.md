@@ -2,7 +2,7 @@
 
 ## Windows (experimental)
 
-You need UNBEATABLE on Steam and the Discord desktop app.
+You need UNBEATABLE on Steam, and the Discord desktop app or [Vesktop](https://github.com/Vencord/Vesktop) with **arRPC** on (Vesktop is untested on Windows).
 
 1. Download the latest `-windows-x86_64.zip` from [releases](https://github.com/decbr/better-unbeatable-rpc/releases) and extract it.
 2. Quit the game, then double-click **install.cmd**. If Windows warns about an unrecognised app, choose *More info → Run anyway*: the programs aren't code-signed.

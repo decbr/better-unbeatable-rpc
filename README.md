@@ -4,7 +4,9 @@
 [![tests](https://github.com/decbr/better-unbeatable-rpc/actions/workflows/release.yml/badge.svg)](https://github.com/decbr/better-unbeatable-rpc/actions/workflows/release.yml)
 [![docs](https://img.shields.io/badge/docs-view-blue.svg)](docs)
 
-Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) that tells people what you're playing.
+<h1 align="center">
+    Discord Rich Presence for <a href="https://store.steampowered.com/app/2240620/UNBEATABLE/">UNBEATABLE</a> that tells people what you're playing.
+</h1>
 
 <p align="center">
   <img src="docs/images/discord-detailed.png" alt="Discord profile: Playing UNBEATABLE, RE-TUNED - peak divide ft. Rachel Lake, UNBEATABLE Lv 20, PB 1,166,540 (S)" width="458">
@@ -18,17 +20,11 @@ Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/224062
 ## How it works
 
 ```
-UNBEATABLE                                  Windows
-┌─────────────────────────┐   UDP 47820   ┌──────────────────┐  discord-ipc-0  ┌─────────┐
-│ BepInEx + UnbeatableRPC ├─────────────▶│ unbeatable-rpc   ├───────────────▶│ Discord │
-│ (reads game state)      │  JSON, local  │ (daemon, Go)     │   named pipe    │         │
-└─────────────────────────┘               └──────────────────┘                 └─────────┘
-
-UNBEATABLE (Proton)                         Linux
-┌─────────────────────────┐   UDP 47820   ┌──────────────────┐  discord-ipc-0  ┌─────────┐
-│ BepInEx + UnbeatableRPC ├─────────────▶│ unbeatable-rpc   ├───────────────▶│ Vesktop │
-│ (reads game state)      │  JSON, local  │ (daemon, Go)     │   Unix socket   │ (arRPC) │
-└─────────────────────────┘               └──────────────────┘                 └─────────┘
+UNBEATABLE                                  Your PC                               Client
+┌─────────────────────────┐   UDP 47820   ┌──────────────────┐  discord-ipc-0   ┌─────────────────────────┐
+│ BepInEx + UnbeatableRPC ├─────────────▶│ unbeatable-rpc   ├─────────────────▶│ Discord, or Vesktop     │
+│ (reads game state)      │  JSON, local  │ (daemon, Go)     │ Win: named pipe  │ with arRPC on           │
+└─────────────────────────┘               └──────────────────┘ Linux: Unix pipe └─────────────────────────┘
 ```
 
 A BepInEx plugin reads the game's state and sends it to a small daemon, which updates Discord. Under Proton the game can't reach Linux's Discord socket, so the split is what makes it work there; Windows uses the same plugin and daemon. The plugin also turns off the game's own leftover Discord integration ("UNBEATABLE [white label]").
@@ -37,7 +33,7 @@ A BepInEx plugin reads the game's state and sends it to a small daemon, which up
 
 ### Windows (experimental)
 
-Built and tested from Linux, not yet confirmed on a real Windows install. If something doesn't work, [open an issue](https://github.com/decbr/better-unbeatable-rpc/issues) with the settings app's **Copy diagnostics** output.
+Built and tested from Linux, sorry if something's off! It shouldn't be, a broken release should never make it to prod; but bugs *do* happen. If something doesn't work, [open an issue](https://github.com/decbr/better-unbeatable-rpc/issues) with the settings app's **Copy diagnostics** output.
 
 1. Download the latest `-windows-x86_64.zip` from [releases](https://github.com/decbr/better-unbeatable-rpc/releases) and extract it.
 2. Quit the game, then double-click **install.cmd**.

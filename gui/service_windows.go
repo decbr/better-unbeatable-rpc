@@ -122,7 +122,7 @@ func setStartAtLogin(on bool) error {
 	if err != nil {
 		return err
 	}
-	return k.SetStringValue(runValue, strconv.Quote(path))
+	return k.SetStringValue(runValue, `"`+path+`"`)
 }
 
 func gameProcessRunning() bool { return len(processes(gameExe)) > 0 }

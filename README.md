@@ -1,6 +1,6 @@
 # better-unbeatable-rpc
 
-Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux, and on [Windows](#windows) too.
+Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux, and on [Windows](#windows) too (experimental).
 
 | Where you are | Top line | Second line |
 |---|---|---|
@@ -106,6 +106,8 @@ unbeatable-rpc-uninstall --all    # also removes BepInEx and the Proton prefix c
 (`./uninstall.sh` in the release folder does the same.) Remove the launch options too, if you set any. None of the game's own files are modified.
 
 ## Windows
+
+**Experimental:** it's built and tested from Linux and hasn't been confirmed on a real Windows install yet. If something doesn't work, open an issue with the settings app's **Copy diagnostics** output.
 
 It works the same way, with Discord's named pipe in place of the socket and no Proton. You need UNBEATABLE on Steam and the Discord desktop app.
 

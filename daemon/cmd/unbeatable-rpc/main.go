@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -38,6 +39,7 @@ func main() {
 	port := flag.Int("port", envInt("UNBEATABLE_RPC_PORT", defaultPort), "UDP port to listen on, 127.0.0.1 only; must match the plugin's UdpPort (env UNBEATABLE_RPC_PORT)")
 	statusPort := flag.Int("status-port", envInt(status.PortEnv, status.DefaultPort), "port for the read-only status endpoint on 127.0.0.1; 0 turns it off (env "+status.PortEnv+")")
 	configPath := flag.String("config", defaultPath, "settings file")
+	logFile := flag.String("log-file", defaultLogFile(), `file to log to, the previous run's kept as .old; "" logs to stderr`)
 
 	// These can also be set in the settings file. Only flags actually given on
 	// the command line override it, so their defaults here are empty.
@@ -59,6 +61,19 @@ func main() {
 
 	logger := log.New(os.Stderr, "unbeatable-rpc: ", log.LstdFlags)
 
+	conn, listenErr := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: *port})
+	if *logFile != "" {
+		if f, err := openLog(*logFile, listenErr == nil); err != nil {
+			logger.Printf("log file: %v", err)
+		} else {
+			defer f.Close()
+			logger.SetOutput(f)
+		}
+	}
+	if listenErr != nil {
+		logger.Fatalf("listen on 127.0.0.1:%d: %v", *port, listenErr)
+	}
+
 	overrides := config.EnvOverrides(os.Getenv)
 	flag.Visit(func(f *flag.Flag) {
 		if key, ok := flagKeys[f.Name]; ok {
@@ -74,11 +89,6 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
-	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: *port})
-	if err != nil {
-		logger.Fatalf("listen on 127.0.0.1:%d: %v", *port, err)
-	}
 	cfg := d.current()
 	logger.Printf("listening on %s, client ID %s, style %s", conn.LocalAddr(), cfg.ClientID, cfg.Style)
 	logger.Printf("settings file: %s", d.path)
@@ -127,10 +137,7 @@ type daemon struct {
 	fileErr string
 }
 
-// load reads the settings file and works out the settings to use. At start-up
-// a bad flag or environment variable is fatal; a bad file never is: at
-// start-up its bad parts fall back to defaults, and on reload the previous
-// settings are kept.
+// load reads the settings file and works out the settings to use.
 func (d *daemon) load(initial bool) (presence.Update, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -264,4 +271,15 @@ func envInt(key string, def int) int {
 		return def
 	}
 	return n
+}
+
+// openLog opens the log for appending, first moving the last one to .old if rotate is set.
+func openLog(path string, rotate bool) (*os.File, error) {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return nil, err
+	}
+	if rotate {
+		_ = os.Rename(path, path+".old")
+	}
+	return os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 }

@@ -14,7 +14,7 @@ import (
 const (
 	appID           = "2240620"
 	launchOptions   = `WINEDLLOVERRIDES="winhttp=n,b" %command%`
-	overrideSection = `[Software\Wine\DllOverrides]`
+	overrideSection = `[Software\\Wine\\DllOverrides]`
 )
 
 // platformState is what the Linux checks keep between polls.

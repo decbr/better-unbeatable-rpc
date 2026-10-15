@@ -13,7 +13,9 @@ import (
 func Listen(t *testing.T) (string, net.Listener) {
 	t.Helper()
 	path := pipeName()
-	ln, err := winio.ListenPipe(path, nil)
+	// Buffered like Discord's pipe. With none, writes block until the other
+	// side reads, and the fake server and client deadlock writing at once.
+	ln, err := winio.ListenPipe(path, &winio.PipeConfig{InputBufferSize: 64 << 10, OutputBufferSize: 64 << 10})
 	if err != nil {
 		t.Fatal(err)
 	}

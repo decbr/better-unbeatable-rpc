@@ -177,7 +177,7 @@ load_state() {
     BEPINEX_INSTALLED=false PREFIX_REG="" PREFIX_PREVIOUS="" SERVICE=false GAME_DIR=""
     # shellcheck disable=SC1090
     [[ -f "$state_file" ]] && source "$state_file"
-    [[ -n "$game_dir" ]] || game_dir="$GAME_DIR"
+    [[ -n "$game_dir" || ! -d "$GAME_DIR" ]] || game_dir="$GAME_DIR"
 }
 
 write_state() {

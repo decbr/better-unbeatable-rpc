@@ -104,7 +104,7 @@ function Get-SteamLibraries {
     $libs = @()
     foreach ($root in Get-SteamRoots) {
         $libs += $root
-        $vdf = Get-Content -LiteralPath (Join-Path $root 'steamapps\libraryfolders.vdf')
+        $vdf = Get-Content -Encoding UTF8 -LiteralPath (Join-Path $root 'steamapps\libraryfolders.vdf')
         foreach ($line in $vdf) {
             if ($line -match '^\s*"path"\s*"(.*)"\s*$') {
                 $libs += [IO.Path]::GetFullPath($Matches[1].Replace('\\', '\'))
@@ -118,7 +118,7 @@ function Find-Game {
     foreach ($lib in Get-SteamLibraries) {
         $manifest = Join-Path $lib "steamapps\appmanifest_$AppId.acf"
         if (-not (Test-Path -LiteralPath $manifest)) { continue }
-        foreach ($line in Get-Content -LiteralPath $manifest) {
+        foreach ($line in Get-Content -Encoding UTF8 -LiteralPath $manifest) {
             if ($line -match '^\s*"installdir"\s*"(.*)"\s*$') {
                 return Join-Path $lib "steamapps\common\$($Matches[1])"
             }
@@ -140,7 +140,7 @@ function Stop-Program([string]$Exe) {
 function Read-State {
     $state = [ordered]@{ gameDir = ''; bepinexInstalled = $false }
     if (Test-Path -LiteralPath $StateFile) {
-        $saved = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
+        $saved = Get-Content -Encoding UTF8 -LiteralPath $StateFile -Raw | ConvertFrom-Json
         if ($saved.PSObject.Properties['gameDir']) { $state.gameDir = [string]$saved.gameDir }
         if ($saved.PSObject.Properties['bepinexInstalled']) { $state.bepinexInstalled = [bool]$saved.bepinexInstalled }
     }

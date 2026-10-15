@@ -1,4 +1,4 @@
-# builds the release tarball and publishes a GitHub release when a version tag is pushed:
+# builds the Linux tarball and the Windows zip, and publishes a GitHub release when a version tag is pushed:
 #
 #   scripts/bump-version.sh 0.2.0   # sets the version, builds plugin/dist/, commits, tags v0.2.0
 #   git push --follow-tags
@@ -27,6 +27,29 @@ jobs:
 
       - run: make test
 
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: gui/go.mod
+
+      - run: go vet ./... && go test ./...
+        shell: bash
+
+      - run: cd gui && go vet -tags desktop,production . && go test -tags desktop,production .
+        shell: bash
+
+      - name: Check install.ps1
+        shell: pwsh
+        run: |
+          if (-not (Get-Module -ListAvailable PSScriptAnalyzer)) { Install-Module PSScriptAnalyzer -Force -Scope CurrentUser }
+          $found = Invoke-ScriptAnalyzer -Path scripts/install.ps1 -Severity Error
+          $found | Format-Table -AutoSize
+          if ($found) { exit 1 }
+
   test-gui:
     runs-on: ubuntu-latest
     steps:
@@ -41,7 +64,7 @@ jobs:
       - run: make test-gui
 
   release:
-    needs: [test, test-gui]
+    needs: [test, test-windows, test-gui]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -70,7 +93,7 @@ jobs:
           dll=$(pwsh -NoProfile -Command "[Reflection.AssemblyName]::GetAssemblyName('plugin/dist/UnbeatableRPC.dll').Version.ToString(3)")
           [ "$dll" = "$version" ] || fail "plugin/dist/UnbeatableRPC.dll is version $dll, not $version"
 
-      - run: make release VERSION=${GITHUB_REF_NAME#v} PREBUILT_PLUGIN=plugin/dist/UnbeatableRPC.dll
+      - run: make release release-windows VERSION=${GITHUB_REF_NAME#v} PREBUILT_PLUGIN=plugin/dist/UnbeatableRPC.dll
 
       # notes are the commits since the previous tag, minus the version bump
       - name: Create GitHub release
@@ -79,16 +102,25 @@ jobs:
         run: |
           version=${GITHUB_REF_NAME#v}
           tarball=dist/better-unbeatable-rpc-$version-linux-x86_64.tar.gz
-          (cd dist && sha256sum "$(basename "$tarball")" > "$(basename "$tarball").sha256")
+          zip=dist/better-unbeatable-rpc-$version-windows-x86_64.zip
+          for f in "$tarball" "$zip"; do
+            (cd dist && sha256sum "$(basename "$f")" > "$(basename "$f").sha256")
+          done
           prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
           {
             echo "## Install"
+            echo
+            echo "### Linux"
             echo
             echo '```bash'
             echo "tar xzf better-unbeatable-rpc-$version-linux-x86_64.tar.gz"
             echo "cd better-unbeatable-rpc-$version-linux-x86_64"
             echo "./install.sh"
             echo '```'
+            echo
+            echo "### Windows"
+            echo
+            echo "Extract better-unbeatable-rpc-$version-windows-x86_64.zip, then double-click **install.cmd**."
             echo
             echo "## Changes"
             echo
@@ -98,5 +130,5 @@ jobs:
               echo "**Full changelog:** https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
             fi
           } > notes.md
-          gh release create "$GITHUB_REF_NAME" "$tarball" "$tarball.sha256" \
+          gh release create "$GITHUB_REF_NAME" "$tarball" "$tarball.sha256" "$zip" "$zip.sha256" \
             --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

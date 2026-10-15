@@ -11,6 +11,12 @@ PLUGIN_DIST = plugin/dist/UnbeatableRPC.dll
 # the settings app links against WebKitGTK 4.1; NO_GUI=1 leaves it out
 GUI_TAGS = desktop,production,webkit2_41
 
+ifeq ($(OS),Windows_NT)
+ifeq ($(shell command -v $(DOTNET)),)
+PREBUILT_PLUGIN ?= $(PLUGIN_DIST)
+endif
+endif
+
 ifdef PREBUILT_PLUGIN
 PLUGIN_DLL   = $(PREBUILT_PLUGIN)
 RELEASE_DEPS = daemon
@@ -22,7 +28,16 @@ ifndef NO_GUI
 RELEASE_DEPS += gui
 endif
 
-.PHONY: all plugin plugin-dist daemon gui test test-gui release install uninstall clean
+WIN_NAME         = better-unbeatable-rpc-$(VERSION)-windows-x86_64
+WIN_RELEASE_DIR  = dist/$(WIN_NAME)
+WIN_BIN          = bin/windows
+WIN_ENV          = GOOS=windows GOARCH=amd64 CGO_ENABLED=0
+WIN_RELEASE_DEPS = $(filter plugin,$(RELEASE_DEPS)) daemon-windows gui-windows
+WINRES = $(GO) run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 \
+	--product-name "UNBEATABLE RPC" --product-version $(VERSION) --file-version $(VERSION)
+
+.PHONY: all plugin plugin-dist daemon gui test test-gui release install uninstall clean \
+	winres daemon-windows gui-windows test-windows-cross stage-windows release-windows install-windows
 
 all: daemon plugin gui
 
@@ -59,11 +74,39 @@ endif
 	tar -C dist -czf "dist/$(NAME).tar.gz" "$(NAME)"
 	@echo "Built dist/$(NAME).tar.gz"
 
+winres:
+	$(WINRES) --manifest gui --file-description "UNBEATABLE RPC settings" --out gui/rsrc
+	$(WINRES) --manifest none --file-description "UNBEATABLE RPC daemon" --out daemon/cmd/unbeatable-rpc/rsrc
+
+daemon-windows: winres
+	$(WIN_ENV) $(GO) build -trimpath -ldflags="-s -w -H windowsgui -X main.version=$(VERSION)" -o $(WIN_BIN)/unbeatable-rpc.exe ./daemon/cmd/unbeatable-rpc
+	$(WIN_ENV) $(GO) build -trimpath -ldflags="-s -w" -o $(WIN_BIN)/fakegame.exe ./daemon/cmd/fakegame
+
+gui-windows: winres
+	cd gui && $(WIN_ENV) $(GO) build -tags desktop,production -trimpath -ldflags="-s -w -H windowsgui -X main.version=$(VERSION)" -o ../$(WIN_BIN)/unbeatable-rpc-settings.exe .
+
+test-windows-cross:
+	GOOS=windows $(GO) vet ./...
+	cd gui && GOOS=windows $(GO) vet -tags desktop,production .
+
+stage-windows: $(WIN_RELEASE_DEPS)
+	rm -rf "$(WIN_RELEASE_DIR)"
+	install -Dm644 $(WIN_BIN)/unbeatable-rpc.exe $(WIN_BIN)/unbeatable-rpc-settings.exe "$(PLUGIN_DLL)" -t "$(WIN_RELEASE_DIR)"
+	install -Dm644 scripts/install.ps1 scripts/install.cmd scripts/uninstall.cmd README.md -t "$(WIN_RELEASE_DIR)"
+
+release-windows: stage-windows
+	rm -f "dist/$(WIN_NAME).zip"
+	cd dist && zip -qr "$(WIN_NAME).zip" "$(WIN_NAME)"
+	@echo "Built dist/$(WIN_NAME).zip"
+
 install: release
 	"$(RELEASE_DIR)/install.sh" $(INSTALL_ARGS)
+
+install-windows: stage-windows
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(WIN_RELEASE_DIR)/install.ps1" $(INSTALL_ARGS)
 
 uninstall:
 	scripts/uninstall.sh $(UNINSTALL_ARGS)
 
 clean:
-	rm -rf bin dist plugin/bin plugin/obj
+	rm -rf bin dist plugin/bin plugin/obj gui/*.syso daemon/cmd/unbeatable-rpc/*.syso

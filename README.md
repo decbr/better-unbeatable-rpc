@@ -5,7 +5,7 @@
 [![docs](https://img.shields.io/badge/docs-view-blue.svg)](docs)
 
 <h2 align="center">
-    Discord Rich Presence for <a href="https://store.steampowered.com/app/2240620/UNBEATABLE/">UNBEATABLE</a> that tells people what you're playing.
+    Discord Rich Presence for <a href="https://store.steampowered.com/app/2240620/UNBEATABLE/">UNBEATABLE</a> that shows your songs.
 </h2>
 
 <p align="center">
@@ -21,10 +21,10 @@
 
 ```
 UNBEATABLE                                  Your PC                               Client
-┌─────────────────────────┐   UDP 47820   ┌──────────────────┐  discord-ipc-0   ┌─────────────────────────┐
-│ BepInEx + UnbeatableRPC ├─────────────▶│ unbeatable-rpc   ├─────────────────▶│ Discord, or Vesktop     │
-│ (reads game state)      │  JSON, local  │ (daemon, Go)     │ Win: named pipe  │ with arRPC on           │
-└─────────────────────────┘               └──────────────────┘ Linux: Unix pipe └─────────────────────────┘
+┌─────────────────────────┐   UDP 47820   ┌──────────────────┐  discord-ipc-0   ┌─────────────┐
+│ BepInEx + UnbeatableRPC ├─────────────▶│ unbeatable-rpc   ├────────────────▶│ Discord     │
+│ (reads game state)      │  JSON, local  │ (daemon, Go)     │ Win: named pipe  │ or Vesktop  │
+└─────────────────────────┘               └──────────────────┘ Linux: Unix pipe └─────────────┘
 ```
 
 A BepInEx plugin reads the game's state and sends it to a small daemon, which updates Discord. Under Proton the game can't reach Linux's Discord socket, so the split is what makes it work there; Windows uses the same plugin and daemon. The plugin also turns off the game's own leftover Discord integration ("UNBEATABLE [white label]").

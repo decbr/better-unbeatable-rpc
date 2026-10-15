@@ -98,7 +98,7 @@ func (a *App) OpenStyleFile() (*presence.CustomStyle, error) {
 
 func styleFileName(name string) string {
 	name = strings.Map(func(r rune) rune {
-		if r == '/' || r == '\\' || r < ' ' {
+		if strings.ContainsRune(`/\:*?"<>|`, r) || r < ' ' {
 			return '-'
 		}
 		return r

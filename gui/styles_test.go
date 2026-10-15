@@ -46,7 +46,7 @@ func TestImportStyleRejects(t *testing.T) {
 }
 
 func TestStyleFileName(t *testing.T) {
-	for in, want := range map[string]string{"mine": "mine.json", " a/b\\c ": "a-b-c.json", "": "style.json", "..": "style.json"} {
+	for in, want := range map[string]string{"mine": "mine.json", " a/b\\c ": "a-b-c.json", "": "style.json", "..": "style.json", "a:b?": "a-b-.json"} {
 		if got := styleFileName(in); got != want {
 			t.Errorf("%q: got %q, want %q", in, got, want)
 		}

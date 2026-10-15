@@ -60,3 +60,16 @@ func TestFetchNoDaemon(t *testing.T) {
 		t.Error("Fetch succeeded with nothing listening")
 	}
 }
+
+func TestHandlerRejectsOtherHosts(t *testing.T) {
+	h := Handler(func() Response { return Response{} })
+	for host, want := range map[string]int{"127.0.0.1:47821": http.StatusOK, "localhost:47821": http.StatusOK, "evil.example:47821": http.StatusForbidden} {
+		req := httptest.NewRequest(http.MethodGet, "/status", nil)
+		req.Host = host
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		if rec.Code != want {
+			t.Errorf("Host %s = %d, want %d", host, rec.Code, want)
+		}
+	}
+}

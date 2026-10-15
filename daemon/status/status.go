@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -34,6 +35,11 @@ func Handler(get func() Response) http.Handler {
 		if r.Method != http.MethodGet {
 			w.Header().Set("Allow", http.MethodGet)
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		// a web page could reach this through DNS rebinding, under its own host name
+		if host, _, _ := net.SplitHostPort(r.Host); host != "127.0.0.1" && host != "localhost" {
+			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")

@@ -4,16 +4,11 @@
 [![tests](https://github.com/decbr/better-unbeatable-rpc/actions/workflows/release.yml/badge.svg)](https://github.com/decbr/better-unbeatable-rpc/actions/workflows/release.yml)
 [![docs](https://img.shields.io/badge/docs-view-blue.svg)](docs)
 
-Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/): the song, its artist, difficulty and your PB, while you play.
+Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) that tells people what you're playing.
 
 <p align="center">
   <img src="docs/images/discord-detailed.png" alt="Discord profile: Playing UNBEATABLE, RE-TUNED - peak divide ft. Rachel Lake, UNBEATABLE Lv 20, PB 1,166,540 (S)" width="458">
 </p>
-
-- **Everything the game knows.** Song, artist, charter, difficulty, level, your PB and rank for the board you're on (Classic, Double Time or Half Time), story chapter and star rating.
-- **Your style.** Three built-in styles, or build your own from drag-and-drop pieces, and share it as text.
-- **A settings app.** Pick a style, see what Discord shows, and check your setup with one click when something's wrong.
-- **Hands off.** Starts at login, follows the game, clears when you quit. No launch options needed.
 
 <p align="center">
   <img src="docs/images/status.png" alt="The settings app's Status tab, showing the presence Discord sees" width="400">

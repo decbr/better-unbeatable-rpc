@@ -13,7 +13,7 @@ namespace UnbeatableRPC
     {
         public const string Guid = "xyz.diaduck.unbeatable-rpc";
         public const string Name = "UnbeatableRPC";
-        public const string Version = "0.3.1";
+        public const string Version = "0.3.2";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<int> UdpPort;

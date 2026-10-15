@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"net"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc/ipctest"
 )
 
 type fakeServer struct {
@@ -26,19 +27,8 @@ type fakeServer struct {
 
 func newFakeServer(t *testing.T) *fakeServer {
 	t.Helper()
-	// Keep the path short: unix socket paths are limited to ~108 bytes.
-	dir, err := os.MkdirTemp("", "dipc")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(dir) })
-	path := filepath.Join(dir, "discord-ipc-0")
-	ln, err := net.Listen("unix", path)
-	if err != nil {
-		t.Fatal(err)
-	}
+	path, ln := ipctest.Listen(t)
 	s := &fakeServer{t: t, path: path, ln: ln}
-	t.Cleanup(func() { ln.Close() })
 	go s.serve()
 	return s
 }
@@ -188,16 +178,7 @@ func TestClientReportsErrorEvent(t *testing.T) {
 
 func TestDialSkipsStaleSocket(t *testing.T) {
 	srv := newFakeServer(t)
-
-	dir, _ := os.MkdirTemp("", "dipc")
-	defer os.RemoveAll(dir)
-	stale := filepath.Join(dir, "discord-ipc-1")
-	ln, err := net.Listen("unix", stale)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ln.(*net.UnixListener).SetUnlinkOnClose(false)
-	ln.Close()
+	stale := ipctest.Stale(t)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

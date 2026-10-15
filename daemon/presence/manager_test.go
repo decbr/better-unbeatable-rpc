@@ -6,13 +6,12 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc"
+	"github.com/decbr/better-unbeatable-rpc/daemon/internal/discordipc/ipctest"
 )
 
 type ipcRecorder struct {
@@ -26,17 +25,8 @@ type ipcRecorder struct {
 }
 
 func newRecorder(t *testing.T) *ipcRecorder {
-	dir, err := os.MkdirTemp("", "pres")
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(dir) })
-	r := &ipcRecorder{path: filepath.Join(dir, "discord-ipc-0")}
-	r.ln, err = net.Listen("unix", r.path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { r.ln.Close() })
+	r := &ipcRecorder{}
+	r.path, r.ln = ipctest.Listen(t)
 	go func() {
 		for {
 			c, err := r.ln.Accept()

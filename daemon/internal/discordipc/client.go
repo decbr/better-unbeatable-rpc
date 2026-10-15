@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"sync"
@@ -56,11 +57,9 @@ type message struct {
 }
 
 func Dial(ctx context.Context, clientID string, paths ...string) (*Client, error) {
-	if len(paths) == 0 {
+	searched := len(paths) == 0
+	if searched {
 		paths = CandidatePaths()
-	}
-	if len(paths) == 0 {
-		return nil, errors.New("discordipc: no discord-ipc socket found (is Vesktop running with arRPC on?)")
 	}
 	var errs []error
 	for _, p := range paths {
@@ -68,14 +67,19 @@ func Dial(ctx context.Context, clientID string, paths ...string) (*Client, error
 		if err == nil {
 			return c, nil
 		}
+		if searched && errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
 		errs = append(errs, fmt.Errorf("%s: %w", p, err))
+	}
+	if len(errs) == 0 {
+		return nil, errors.New("discordipc: " + noSocketHint)
 	}
 	return nil, errors.Join(errs...)
 }
 
 func dialOne(ctx context.Context, clientID, path string) (*Client, error) {
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "unix", path)
+	conn, err := dialConn(ctx, path)
 	if err != nil {
 		return nil, err
 	}

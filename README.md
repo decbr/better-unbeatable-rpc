@@ -4,9 +4,9 @@
 [![tests](https://github.com/decbr/better-unbeatable-rpc/actions/workflows/release.yml/badge.svg)](https://github.com/decbr/better-unbeatable-rpc/actions/workflows/release.yml)
 [![docs](https://img.shields.io/badge/docs-view-blue.svg)](docs)
 
-<h1 align="center">
+<h2 align="center">
     Discord Rich Presence for <a href="https://store.steampowered.com/app/2240620/UNBEATABLE/">UNBEATABLE</a> that tells people what you're playing.
-</h1>
+</h2>
 
 <p align="center">
   <img src="docs/images/discord-detailed.png" alt="Discord profile: Playing UNBEATABLE, RE-TUNED - peak divide ft. Rachel Lake, UNBEATABLE Lv 20, PB 1,166,540 (S)" width="458">

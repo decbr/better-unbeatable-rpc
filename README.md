@@ -1,7 +1,6 @@
 # better-unbeatable-rpc
 
-Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux. \
-Not Windows at the moment. Sorry! I don't have a Windows machine I can test with.
+Discord Rich Presence for [UNBEATABLE](https://store.steampowered.com/app/2240620/UNBEATABLE/) on Linux, and on [Windows](#windows) too.
 
 | Where you are | Top line | Second line |
 |---|---|---|
@@ -106,12 +105,39 @@ unbeatable-rpc-uninstall --all    # also removes BepInEx and the Proton prefix c
 
 (`./uninstall.sh` in the release folder does the same.) Remove the launch options too, if you set any. None of the game's own files are modified.
 
+## Windows
+
+It works the same way, with Discord's named pipe in place of the socket and no Proton. You need UNBEATABLE on Steam and the Discord desktop app.
+
+1. Download the latest `-windows-x86_64.zip` from [releases](https://github.com/decbr/better-unbeatable-rpc/releases) and extract it.
+2. Quit the game, then double-click **install.cmd**. If Windows warns about an unrecognised app, choose *More info → Run anyway*: the programs aren't code-signed.
+3. Launch UNBEATABLE.
+
+The installer finds the game, installs BepInEx if needed, puts the daemon and the settings app in `%LOCALAPPDATA%\Programs\unbeatable-rpc`, and starts the daemon at login. No launch options are needed. The settings app is **UNBEATABLE RPC** in the Start menu, and everything under [Styles](#styles) and [Troubleshooting](#troubleshooting) applies, with these differences:
+
+- Settings are in `%APPDATA%\unbeatable-rpc\config.json`, and the daemon's log is `%LOCALAPPDATA%\unbeatable-rpc\daemon.log` (also on the app's **Daemon** tab).
+- If the installer says it can't write to the game folder, right-click **install.cmd** → *Run as administrator*.
+- To uninstall, use the app's Advanced → **Uninstall…**, or **uninstall.cmd** in the release folder (`uninstall.cmd -All` also removes BepInEx).
+
 ## Building from source
 
 Needs Go 1.25+, the .NET SDK 8+, `make`, WebKitGTK 4.1 development files, and the game installed (the plugin compiles against its DLLs).
 
 ```bash
 make install    # or GAME_DIR=/path/to/UNBEATABLE make install; NO_GUI=1 skips the settings app
+```
+
+The Windows build cross-compiles from Linux, with no cgo or Windows toolchain (`zip` is needed for the zip):
+
+```bash
+make test-windows-cross    # type-checks the Windows code, tests included
+make release-windows       # dist/better-unbeatable-rpc-<version>-windows-x86_64.zip
+```
+
+On Windows itself, with Go 1.25+, GNU make (`winget install ezwinports.make`) and Git for Windows's `bin` folder on PATH, this builds and installs. Without the .NET SDK it uses the prebuilt plugin in `plugin/dist/`:
+
+```bash
+make install-windows    # INSTALL_ARGS=-Yes skips the questions
 ```
 
 ---

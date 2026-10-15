@@ -16,7 +16,7 @@ The installer:
 - starts the daemon, and at every login from then on
 - adds **UNBEATABLE RPC** to the Start menu
 
-No launch options are needed. Re-running **install.cmd** is always safe, and is how you update.
+No launch options are needed. Re-running **install.cmd** is always safe; it's also how you [update](#updating).
 
 If it says it can't write to the game folder, right-click **install.cmd** → *Run as administrator*.
 
@@ -72,3 +72,12 @@ unbeatable-rpc-uninstall --all    # also removes BepInEx and the Proton prefix c
 ```
 
 `./uninstall.sh` in the release folder does the same. Remove the launch options too, if you set any. None of the game's own files are modified.
+
+## Updating
+
+When a new version is out, the settings app shows a banner on its **Status** tab (0.3.1 and older don't check).
+
+1. Download the latest release from [releases](https://github.com/decbr/better-unbeatable-rpc/releases/latest) and extract it.
+2. Quit the game, then run the installer again: **install.cmd** on Windows, `./install.sh` on Linux.
+
+The installer replaces the plugin, the daemon and the settings app, and restarts the daemon. Your settings and custom styles are kept.

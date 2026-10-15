@@ -45,6 +45,8 @@ Built and tested from Linux, sorry if something's off! It shouldn't be, a broken
 2. Quit the game, then run `./install.sh` in the extracted folder.
 3. Launch UNBEATABLE.
 
+To update, download the new release and run its installer the same way; the settings app tells you when one is out. See [Updating](docs/install.md#updating).
+
 Works with Vesktop (arRPC on) or the official Discord client. The settings app needs WebKitGTK 4.1.
 
 The settings app is **UNBEATABLE RPC** in your Start menu or app menu. See [Install](docs/install.md) for what the installer does, its options and uninstalling.

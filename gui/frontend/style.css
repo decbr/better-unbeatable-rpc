@@ -32,6 +32,8 @@ main { padding: 16px; display: grid; gap: 12px; }
   padding: 14px 16px;
 }
 
+.update { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
 .card header, .card summary {
   display: flex;
   align-items: center;

@@ -1026,6 +1026,10 @@ function renderHelp() {
 
 // Go checks the copy really landed; if it didn't, the report is shown
 // selected so Ctrl+C works.
+$("update-download").addEventListener("click", () => {
+  window.runtime.BrowserOpenURL("https://github.com/decbr/better-unbeatable-rpc/releases/latest");
+});
+
 $("copy-diagnostics").addEventListener("click", async () => {
   const btn = $("copy-diagnostics");
   const err = $("diagnostics-error");
@@ -1241,6 +1245,12 @@ function renderVersions() {
   }
   await refreshStatus();
   await refreshHealth();
+  // not awaited: a slow network shouldn't hold up the app
+  api().LatestVersion().then((v) => {
+    if (!v) return;
+    $("update-version").textContent = v;
+    $("update").hidden = false;
+  });
   setInterval(refreshStatus, 2000);
   setInterval(refreshHealth, 2000);
   setInterval(refreshLog, 2000);

@@ -108,9 +108,6 @@ jobs:
           version=${GITHUB_REF_NAME#v}
           tarball=dist/better-unbeatable-rpc-$version-linux-x86_64.tar.gz
           zip=dist/better-unbeatable-rpc-$version-windows-x86_64.zip
-          for f in "$tarball" "$zip"; do
-            (cd dist && sha256sum "$(basename "$f")" > "$(basename "$f").sha256")
-          done
           prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
           {
             echo "## Install"
@@ -135,5 +132,5 @@ jobs:
               echo "**Full changelog:** https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
             fi
           } > notes.md
-          gh release create "$GITHUB_REF_NAME" "$tarball" "$tarball.sha256" "$zip" "$zip.sha256" \
+          gh release create "$GITHUB_REF_NAME" "$tarball" "$zip" \
             --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag

@@ -181,7 +181,7 @@ func uninstallerPath() (string, error) {
 	}
 	path := filepath.Join(filepath.Dir(self), "install.ps1")
 	if _, err := os.Stat(path); err != nil {
-		return "", fmt.Errorf("couldn't find %s; run install.ps1 -Uninstall from the release folder instead", path)
+		return "", fmt.Errorf("couldn't find %s; run uninstall.cmd from the release folder instead", path)
 	}
 	return path, nil
 }

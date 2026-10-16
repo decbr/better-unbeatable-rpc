@@ -45,7 +45,8 @@ plugin:
 	$(DOTNET) build plugin/UnbeatableRPC.csproj -c Release -p:GameDir="$(GAME_DIR)" -p:Version=$(VERSION)
 
 plugin-dist: plugin
-	install -Dm644 plugin/bin/Release/UnbeatableRPC.dll "$(PLUGIN_DIST)"
+	mkdir -p plugin/dist
+	install -m644 plugin/bin/Release/UnbeatableRPC.dll "$(PLUGIN_DIST)"
 
 daemon:
 	CGO_ENABLED=0 $(GO) build -trimpath -ldflags="-s -w -X main.version=$(VERSION)" -o bin/unbeatable-rpc ./daemon/cmd/unbeatable-rpc
@@ -63,13 +64,14 @@ test-gui:
 
 release: $(RELEASE_DEPS)
 	rm -rf "$(RELEASE_DIR)"
-	install -Dm755 bin/unbeatable-rpc "$(RELEASE_DIR)/unbeatable-rpc"
-	install -Dm644 "$(PLUGIN_DLL)" "$(RELEASE_DIR)/UnbeatableRPC.dll"
-	install -Dm755 scripts/install.sh scripts/uninstall.sh scripts/unbeatable-launch.sh -t "$(RELEASE_DIR)"
-	install -Dm644 scripts/unbeatable-rpc.service README.md -t "$(RELEASE_DIR)"
+	mkdir -p "$(RELEASE_DIR)"
+	install -m755 bin/unbeatable-rpc "$(RELEASE_DIR)/unbeatable-rpc"
+	install -m644 "$(PLUGIN_DLL)" "$(RELEASE_DIR)/UnbeatableRPC.dll"
+	install -m755 scripts/install.sh scripts/uninstall.sh scripts/unbeatable-launch.sh "$(RELEASE_DIR)"
+	install -m644 scripts/unbeatable-rpc.service README.md LICENSE "$(RELEASE_DIR)"
 ifndef NO_GUI
-	install -Dm755 bin/unbeatable-rpc-settings -t "$(RELEASE_DIR)"
-	install -Dm644 scripts/unbeatable-rpc-settings.desktop -t "$(RELEASE_DIR)"
+	install -m755 bin/unbeatable-rpc-settings "$(RELEASE_DIR)"
+	install -m644 scripts/unbeatable-rpc-settings.desktop "$(RELEASE_DIR)"
 endif
 	tar -C dist -czf "dist/$(NAME).tar.gz" "$(NAME)"
 	@echo "Built dist/$(NAME).tar.gz"
@@ -91,8 +93,9 @@ test-windows-cross:
 
 stage-windows: $(WIN_RELEASE_DEPS)
 	rm -rf "$(WIN_RELEASE_DIR)"
-	install -Dm644 $(WIN_BIN)/unbeatable-rpc.exe $(WIN_BIN)/unbeatable-rpc-settings.exe "$(PLUGIN_DLL)" -t "$(WIN_RELEASE_DIR)"
-	install -Dm644 scripts/install.ps1 scripts/install.cmd scripts/uninstall.cmd README.md -t "$(WIN_RELEASE_DIR)"
+	mkdir -p "$(WIN_RELEASE_DIR)/files"
+	install -m644 scripts/install.cmd scripts/uninstall.cmd README.md LICENSE "$(WIN_RELEASE_DIR)"
+	install -m644 scripts/install.ps1 $(WIN_BIN)/unbeatable-rpc.exe $(WIN_BIN)/unbeatable-rpc-settings.exe "$(PLUGIN_DLL)" "$(WIN_RELEASE_DIR)/files"
 
 release-windows: stage-windows
 	rm -f "dist/$(WIN_NAME).zip"
@@ -103,7 +106,7 @@ install: release
 	"$(RELEASE_DIR)/install.sh" $(INSTALL_ARGS)
 
 install-windows: stage-windows
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(WIN_RELEASE_DIR)/install.ps1" $(INSTALL_ARGS)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(WIN_RELEASE_DIR)/files/install.ps1" $(INSTALL_ARGS)
 
 uninstall:
 	scripts/uninstall.sh $(UNINSTALL_ARGS)

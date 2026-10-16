@@ -263,7 +263,7 @@ function Install-Files($State) {
 function Invoke-Install {
     foreach ($f in $Daemon, 'UnbeatableRPC.dll') {
         if (-not (Test-Path -LiteralPath (Join-Path $Here $f))) {
-            Die "$Daemon and UnbeatableRPC.dll must be next to install.ps1 (run it from the release folder)"
+            Die "$Daemon and UnbeatableRPC.dll must be next to install.ps1 (run install.cmd from the release folder)"
         }
     }
     $state = Read-State

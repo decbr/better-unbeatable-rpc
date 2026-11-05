@@ -8,7 +8,7 @@ The settings app writes everything to one file, and the daemon picks up changes 
 | Linux | `~/.config/unbeatable-rpc/config.json` |
 
 ```json
-{"style": "spotify"}
+{"style": "detailed"}
 ```
 
 A broken file never stops the daemon: it keeps the settings it had, and the settings app shows what's wrong.
@@ -20,7 +20,7 @@ A broken file never stops the daemon: it keeps the settings it had, and the sett
 | `style` | `--style` | `UNBEATABLE_RPC_STYLE` | `detailed`. A built-in or custom style's name; see [Styles](styles.md) |
 | `customStyles` | | | Styles made in the app |
 | `hidden` | | `UNBEATABLE_RPC_HIDDEN` | `false`. Keeps the game off Discord without closing it: the app's **Show on Discord** box |
-| `largeImage` | `--large-image` | `UNBEATABLE_RPC_LARGE_IMAGE` | `logo` (`drp_icon` with the game's own client ID) |
+| `largeImage` | `--large-image` | `UNBEATABLE_RPC_LARGE_IMAGE` | `logo` (`drp_icon` with the game's own client ID). With the default client ID and no `largeImage` set, a song shows its album cover, with the logo small in the corner. Custom charts show the logo |
 | `clientId` | `--client-id` | `UNBEATABLE_RPC_CLIENT_ID` | `1555205185792516146`, the "UNBEATABLE" Discord app. The game's own is `892184493899804682` |
 | `socket` | `--socket` | `UNBEATABLE_RPC_SOCKET` | Searched for. A Discord socket (Linux) or pipe (Windows) path |
 | `verbose` | `--verbose` | `UNBEATABLE_RPC_VERBOSE` | `false`. Logs every message and activity |

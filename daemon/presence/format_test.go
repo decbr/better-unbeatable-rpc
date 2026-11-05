@@ -78,3 +78,29 @@ func TestTimerIsGameLaunchInEveryState(t *testing.T) {
 		t.Errorf("no launch time: timestamps %+v, want none", a.Timestamps)
 	}
 }
+
+func TestFormatCover(t *testing.T) {
+	o := Options{LargeImage: "logo", LargeText: "UNBEATABLE", Covers: map[string]string{"cover_retuned": "cover_retuned_ac"}}
+	s := State{V: 1, State: StateArcade, Song: "RE-TUNED", Cover: "cover_retuned"}
+	if a := Format(s, o).Assets; a.LargeImage != "cover_retuned_ac" || a.LargeText != "RE-TUNED" || a.SmallImage != "logo" {
+		t.Errorf("aliased cover: assets = %+v", a)
+	}
+	for k, v := range Covers {
+		if Covers[v] != v {
+			t.Errorf("Covers[%q] = %q, which is not an uploaded cover", k, v)
+		}
+	}
+	for _, c := range []struct {
+		name string
+		s    State
+		o    Options
+	}{
+		{"unknown cover", State{V: 1, State: StateArcade, Song: "X", Cover: "cover_x"}, o},
+		{"no covers", s, Options{LargeImage: "logo"}},
+		{"no song", State{V: 1, State: StateIdle, Cover: "cover_retuned"}, o},
+	} {
+		if a := Format(c.s, c.o).Assets; a.LargeImage != "logo" || a.SmallImage != "" {
+			t.Errorf("%s: assets = %+v, want logo only", c.name, a)
+		}
+	}
+}

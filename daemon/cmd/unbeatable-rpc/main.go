@@ -187,8 +187,12 @@ func (d *daemon) load(initial bool) (presence.Update, error) {
 	if !initial {
 		d.log.Printf("settings reloaded: style %s, client ID %s", cfg.Style, cfg.ClientID)
 	}
+	opts := presence.Options{LargeImage: cfg.EffectiveLargeImage(), LargeText: largeText, Style: style}
+	if cfg.ClientID == config.DefaultClientID && cfg.LargeImage == "" {
+		opts.Covers = presence.Covers
+	}
 	return presence.Update{
-		Options:   presence.Options{LargeImage: cfg.EffectiveLargeImage(), LargeText: largeText, Style: style},
+		Options:   opts,
 		Verbose:   cfg.Verbose,
 		Hidden:    cfg.Hidden,
 		Reconnect: !initial && (cfg.ClientID != prev.ClientID || cfg.Socket != prev.Socket),

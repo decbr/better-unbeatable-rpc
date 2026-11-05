@@ -10,6 +10,9 @@ type Options struct {
 	LargeImage string
 	LargeText  string
 	Style      Style // see style.go :)
+	// Covers maps a song's cover key to the album cover art asset on the
+	// Discord app; nil keeps LargeImage for every song.
+	Covers map[string]string
 }
 
 func Format(s State, o Options) *discordipc.Activity {
@@ -37,6 +40,10 @@ func Format(s State, o Options) *discordipc.Activity {
 
 	if o.LargeImage != "" {
 		a.Assets = &discordipc.Assets{LargeImage: o.LargeImage, LargeText: o.LargeText}
+		if cover := o.Covers[s.Cover]; s.Song != "" && cover != "" {
+			a.Assets = &discordipc.Assets{LargeImage: cover, LargeText: s.Song,
+				SmallImage: o.LargeImage, SmallText: o.LargeText}
+		}
 	}
 	return a
 }

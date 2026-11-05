@@ -32,6 +32,8 @@ type State struct {
 	// LaunchedAt is when the game started, in Unix seconds: the timer shown
 	// in every state.
 	LaunchedAt int64 `json:"launchedAt,omitempty"`
+	// Cover is the song's album cover art asset key; see covers.go.
+	Cover string `json:"cover,omitempty"`
 }
 
 func ParseState(data []byte) (State, error) {

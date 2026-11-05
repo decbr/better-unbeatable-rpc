@@ -21,6 +21,7 @@ namespace UnbeatableRPC
 
         internal static bool Dump()
         {
+            if (!DlcManager.HasLoaded) return false;
             var index = BeatmapIndex.defaultIndex;
             var names = index?.SongNames;
             if (names == null || names.Length == 0) return false;
@@ -28,15 +29,16 @@ namespace UnbeatableRPC
             string dir = Path.Combine(Paths.CachePath, "UnbeatableRPC-covers");
             Directory.CreateDirectory(dir);
             var keys = new System.Collections.Generic.SortedSet<string>();
+            var skipped = new System.Collections.Generic.SortedSet<string>();
             foreach (string name in names)
             {
                 // Story/brawl variants have no CoverArt; covers.go aliases them to their arcade cover.
-                if (!index.TryGetSong(name, out var song) || song.CoverArt == null) continue;
+                if (!index.TryGetSong(name, out var song) || song.CoverArt == null) { skipped.Add(Key(name)); continue; }
                 File.WriteAllBytes(Path.Combine(dir, Key(name) + ".png"), Png(song.CoverArt));
                 keys.Add(Key(name));
             }
             File.WriteAllLines(Path.Combine(dir, "keys.txt"), keys);
-            Plugin.Log.LogInfo($"Dumped {keys.Count} covers to {dir}");
+            Plugin.Log.LogInfo($"Dumped {keys.Count} covers to {dir}; no cover art: {string.Join(" ", skipped)}");
             return true;
         }
 

@@ -103,6 +103,36 @@ var Covers = map[string]string{
 	"cover_yeahx6radio":                "cover_yeahx6radio",
 	"cover_zero_moment_ac":             "cover_zero_moment_ac",
 
+	// Breakout
+	"cover_ababkababbab":           "cover_ababkababbab",
+	"cover_afterburner":            "cover_afterburner",
+	"cover_afterburn":              "cover_afterburn",
+	"cover_binary_reasoning":       "cover_binary_reasoning",
+	"cover_dear_diary":             "cover_dear_diary",
+	"cover_forward_operating_bass": "cover_forward_operating_bass",
+	"cover_goin_crazy":             "cover_goin_crazy",
+	"cover_hotelroom215":           "cover_hotelroom215",
+	"cover_misery_index":           "cover_misery_index",
+	"cover_square_up":              "cover_square_up",
+	"cover_welcome_to_slamtown":    "cover_welcome_to_slamtown",
+
+	// Jamie Paige
+	"cover_birdbrain":             "cover_birdbrain",
+	"cover_dream_diary":           "cover_dream_diary",
+	"cover_ebichahan":             "cover_ebichahan",
+	"cover_i_wish_i_could_fall":   "cover_i_wish_i_could_fall",
+	"cover_little_secret":         "cover_little_secret",
+	"cover_machine_love":          "cover_machine_love",
+	"cover_my_universal":          "cover_my_universal",
+	"cover_newly_human_feeling":   "cover_newly_human_feeling",
+	"cover_no_eulogies":           "cover_no_eulogies",
+	"cover_nothing_ever":          "cover_nothing_ever",
+	"cover_rot_for_clout":         "cover_rot_for_clout",
+	"cover_sleeping_in_jp_remix":  "cover_sleeping_in_jp_remix",
+	"cover_square_up_synthetic":   "cover_square_up_synthetic",
+	"cover_turn_back":             "cover_turn_back",
+	"cover_women_wrestling_emoji": "cover_women_wrestling_emoji",
+
 	// story/brawl variants, matched by the beatmap's title and audio file
 	"cover_bang_brawl":                 "cover_bang",
 	"cover_beat_v_rest_part_2":         "cover_beat_v_rest_pt_2_ac",
@@ -132,6 +162,7 @@ var Covers = map[string]string{
 //   cover_c3_brawl_2           "BRAWLS 2"
 //   cover_c3_brawl_4           "BRAWLS 4"
 //   cover_c3_brawl_5           "brawls 5"
+//   cover_c4_sp_elevator_fight no matching beatmap found
 //   cover_c4_test_brawl        "Temp Brawl for Richard that is Awesome"
 //   cover_c5_crest_brawl       no matching beatmap found
 //   cover_c5_pocoapoco_test    test chart

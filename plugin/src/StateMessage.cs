@@ -20,6 +20,7 @@ namespace UnbeatableRPC
         public float? Stars;
         public bool? Paused;
         public long? LaunchedAt;
+        public string Cover;
 
         public string ToJson()
         {
@@ -38,6 +39,7 @@ namespace UnbeatableRPC
             if (Stars.HasValue) sb.Append(",\"stars\":").Append(Stars.Value.ToString("0.###", CultureInfo.InvariantCulture));
             if (Paused.HasValue) sb.Append(",\"paused\":").Append(Paused.Value ? "true" : "false");
             if (LaunchedAt.HasValue) sb.Append(",\"launchedAt\":").Append(LaunchedAt.Value);
+            Add(sb, "cover", Cover);
             return sb.Append('}').ToString();
         }
 

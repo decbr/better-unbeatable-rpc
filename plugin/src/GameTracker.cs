@@ -28,6 +28,7 @@ namespace UnbeatableRPC
             public string Difficulty;
             public int Level;
             public string BoardKey;
+            public string Cover;
             public HighScore.Best Best;
         }
 
@@ -43,6 +44,7 @@ namespace UnbeatableRPC
         private string lastJson;
         private string lastScene;
         private string currentChapter;
+        private bool coversDumped;
 
         private void Start()
         {
@@ -64,6 +66,10 @@ namespace UnbeatableRPC
                 Difficulty = NonEmpty(meta?.GetDifficulty(progression?.GetDifficulty()))
                              ?? NonEmpty(progression?.GetDifficulty()),
                 Level = meta != null ? meta.tagData.Level : 0,
+                // Custom charts have their own cover with no art asset.
+                Cover = progression is ArcadeProgression ap && ap.isCustomChart
+                    ? null
+                    : CoverDump.Key(progression?.GetBeatmapPath()?.Split('/')[0]),
             };
             if (facts.Arcade)
             {
@@ -106,6 +112,12 @@ namespace UnbeatableRPC
         {
             if (Time.unscaledTime < nextPoll) return;
             nextPoll = Time.unscaledTime + PollInterval;
+
+            if (Plugin.DumpCovers.Value && !coversDumped)
+            {
+                try { coversDumped = CoverDump.Dump(); }
+                catch (Exception e) { coversDumped = true; Plugin.LogOnce("CoverDump", e); }
+            }
 
             string json;
             try
@@ -159,6 +171,7 @@ namespace UnbeatableRPC
                 msg.Charter = s.Charter;
                 msg.Difficulty = s.Difficulty;
                 msg.Level = s.Level > 0 ? s.Level : (int?)null;
+                msg.Cover = s.Cover;
                 if (!s.Arcade) msg.Chapter = currentChapter;
                 ApplyBest(msg, s.Best);
 
@@ -175,6 +188,7 @@ namespace UnbeatableRPC
                 msg.Charter = lastArcadeSong.Charter;
                 msg.Difficulty = lastArcadeSong.Difficulty;
                 msg.Level = lastArcadeSong.Level > 0 ? lastArcadeSong.Level : (int?)null;
+                msg.Cover = lastArcadeSong.Cover;
                 ApplyBest(msg, lastArcadeSong.Best);
                 return msg;
             }

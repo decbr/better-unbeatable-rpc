@@ -39,3 +39,4 @@ The plugin has its own file, `<game>/BepInEx/config/xyz.diaduck.unbeatable-rpc.c
 | `DisableGameDiscord` | `true` | Stops the game's built-in Discord integration ("UNBEATABLE [white label]") |
 | `DebugLogging` | `false` | Logs scenes and every message to `BepInEx/LogOutput.log` |
 | `UdpPort` | `47820` | Must match the daemon's `--port` |
+| `DumpCovers` | `false` | For maintainers. Writes every album cover to `BepInEx/cache/UnbeatableRPC-covers` to upload as Discord art assets |

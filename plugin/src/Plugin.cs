@@ -20,6 +20,7 @@ namespace UnbeatableRPC
         internal static ConfigEntry<bool> DisableGameDiscord;
         internal static ConfigEntry<bool> DebugLogging;
         internal static ConfigEntry<float> LastKnownStars;
+        internal static ConfigEntry<bool> DumpCovers;
         internal static long LaunchedAt;
 
         private void Awake()
@@ -33,6 +34,8 @@ namespace UnbeatableRPC
                 "Stop the game's built-in Discord Game SDK integration from starting.");
             DebugLogging = Config.Bind("General", "DebugLogging", false,
                 "Log scene changes and every state message sent.");
+            DumpCovers = Config.Bind("General", "DumpCovers", false,
+                "Write every song's album cover to BepInEx/cache/UnbeatableRPC-covers once the game loads. For maintainers uploading Discord art assets.");
             LastKnownStars = Config.Bind("State", "LastKnownStars", -1f,
                 "Last player rank (star rating) seen, so it can be shown before the game recomputes it. Managed by the plugin; -1 means unknown.");
 

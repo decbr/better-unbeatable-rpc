@@ -232,6 +232,8 @@ function Install-Files($State) {
     $pluginDir = Join-Path $State.gameDir 'BepInEx\plugins\UnbeatableRPC'
     New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
     Copy-Item -LiteralPath (Join-Path $Here 'UnbeatableRPC.dll') -Destination $pluginDir -Force
+    # Copy-Item keeps the build time; the settings app compares the install time with the last launch
+    (Get-Item -LiteralPath (Join-Path $pluginDir 'UnbeatableRPC.dll')).LastWriteTime = Get-Date
 
     New-Item -ItemType Directory -Force -Path $ProgramsDir | Out-Null
     foreach ($f in $Daemon, $SettingsApp, 'install.ps1') {

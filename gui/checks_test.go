@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func write(t *testing.T, path, content string) {
@@ -36,6 +37,30 @@ func TestReadBepInExLog(t *testing.T) {
 	write(t, notLoaded, "[Message:   BepInEx] Chainloader started\n")
 	if c := loadedCheck(readBepInExLog(notLoaded)); c.Level != levelBad {
 		t.Errorf("not loaded: %+v", c)
+	}
+}
+
+func TestVersionsCheck(t *testing.T) {
+	dir := t.TempDir()
+	dll := filepath.Join(dir, "UnbeatableRPC.dll")
+	write(t, dll, "")
+	launched := time.Now()
+	if err := os.Chtimes(dll, launched, launched.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	log := bepinexLog{Exists: true, Loaded: true, Version: "0.2.0", Modified: launched}
+
+	if c := versionsCheck(bepinexLog{Version: "0.3.0"}, "0.3.0", dll); c.Level != levelOK {
+		t.Errorf("same versions: %+v", c)
+	}
+	if c := versionsCheck(log, "0.3.0", dll); c.Level != levelWarn || !strings.Contains(c.Fix, "installer") {
+		t.Errorf("mod installed before the last launch: %+v", c)
+	}
+	if err := os.Chtimes(dll, launched, launched.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if c := versionsCheck(log, "0.3.0", dll); c.Level != levelWarn || !strings.Contains(c.Fix, "Launch the game") {
+		t.Errorf("mod installed after the last launch: %+v", c)
 	}
 }
 

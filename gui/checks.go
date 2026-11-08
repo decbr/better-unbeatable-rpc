@@ -46,8 +46,8 @@ func (a *App) Health() Health {
 
 	h.Checks = append(h.Checks, fileCheck("bepinex", "BepInEx", "Installed", "Not installed in the game folder.",
 		filepath.Join(game, "BepInEx", "core", "BepInEx.dll"), filepath.Join(game, "winhttp.dll")))
-	h.Checks = append(h.Checks, fileCheck("plugin", "Mod", "Installed", "Not in BepInEx/plugins.",
-		filepath.Join(game, "BepInEx", "plugins", "UnbeatableRPC", "UnbeatableRPC.dll")))
+	pluginDLL := filepath.Join(game, "BepInEx", "plugins", "UnbeatableRPC", "UnbeatableRPC.dll")
+	h.Checks = append(h.Checks, fileCheck("plugin", "Mod", "Installed", "Not in BepInEx/plugins.", pluginDLL))
 	h.Checks = append(h.Checks, a.platformChecks(game)...)
 
 	log := readBepInExLog(filepath.Join(game, "BepInEx", "LogOutput.log"))
@@ -55,13 +55,7 @@ func (a *App) Health() Health {
 	h.Checks = append(h.Checks, loadedCheck(log))
 
 	if log.Version != "" && daemonErr == nil && daemon.Version != "dev" {
-		c := Check{Key: "versions", Label: "Versions", Level: levelOK, Detail: "Mod and daemon are both " + log.Version}
-		if log.Version != daemon.Version {
-			c.Level = levelWarn
-			c.Detail = fmt.Sprintf("Mod %s (last launch), daemon %s.", log.Version, daemon.Version)
-			c.Fix = "Re-run the installer so they match."
-		}
-		h.Checks = append(h.Checks, c)
+		h.Checks = append(h.Checks, versionsCheck(log, daemon.Version, pluginDLL))
 	}
 
 	if h.GameOpen && daemonErr == nil {
@@ -123,6 +117,24 @@ func loadedCheck(log bepinexLog) Check {
 		c.Level = levelOK
 		c.Detail = fmt.Sprintf("Mod %s loaded %s.", log.Version, ago(log.Modified))
 	}
+	return c
+}
+
+// versionsCheck compares the mod version from the last launch's log with the daemon's.
+// a mod installed after that launch hasn't loaded yet, so the log's version is stale.
+func versionsCheck(log bepinexLog, daemonVersion, pluginDLL string) Check {
+	c := Check{Key: "versions", Label: "Versions", Level: levelOK, Detail: "Mod and daemon are both " + log.Version}
+	if log.Version == daemonVersion {
+		return c
+	}
+	c.Level = levelWarn
+	if fi, err := os.Stat(pluginDLL); err == nil && fi.ModTime().After(log.Modified) {
+		c.Detail = fmt.Sprintf("Mod updated since the last launch (which loaded %s), daemon %s.", log.Version, daemonVersion)
+		c.Fix = "Launch the game to load the new mod."
+		return c
+	}
+	c.Detail = fmt.Sprintf("Mod %s (last launch), daemon %s.", log.Version, daemonVersion)
+	c.Fix = "Re-run the installer so they match."
 	return c
 }
 

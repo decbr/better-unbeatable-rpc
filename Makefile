@@ -30,6 +30,7 @@ endif
 
 WIN_NAME         = better-unbeatable-rpc-$(VERSION)-windows-x86_64
 WIN_RELEASE_DIR  = dist/$(WIN_NAME)
+WIN_FILES_DIR    = $(WIN_RELEASE_DIR)/files (don't touch!)
 WIN_BIN          = bin/windows
 WIN_ENV          = GOOS=windows GOARCH=amd64 CGO_ENABLED=0
 WIN_RELEASE_DEPS = $(filter plugin,$(RELEASE_DEPS)) daemon-windows gui-windows
@@ -93,9 +94,9 @@ test-windows-cross:
 
 stage-windows: $(WIN_RELEASE_DEPS)
 	rm -rf "$(WIN_RELEASE_DIR)"
-	mkdir -p "$(WIN_RELEASE_DIR)/files"
-	install -m644 scripts/install.cmd scripts/uninstall.cmd README.md LICENSE "$(WIN_RELEASE_DIR)"
-	install -m644 scripts/install.ps1 $(WIN_BIN)/unbeatable-rpc.exe $(WIN_BIN)/unbeatable-rpc-settings.exe "$(PLUGIN_DLL)" "$(WIN_RELEASE_DIR)/files"
+	mkdir -p "$(WIN_FILES_DIR)"
+	install -m644 scripts/install.cmd scripts/uninstall.cmd "$(WIN_RELEASE_DIR)"
+	install -m644 scripts/install.ps1 $(WIN_BIN)/unbeatable-rpc.exe $(WIN_BIN)/unbeatable-rpc-settings.exe "$(PLUGIN_DLL)" README.md LICENSE "$(WIN_FILES_DIR)"
 
 release-windows: stage-windows
 	rm -f "dist/$(WIN_NAME).zip"
@@ -106,7 +107,7 @@ install: release
 	"$(RELEASE_DIR)/install.sh" $(INSTALL_ARGS)
 
 install-windows: stage-windows
-	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(WIN_RELEASE_DIR)/files/install.ps1" $(INSTALL_ARGS)
+	powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(WIN_FILES_DIR)/install.ps1" $(INSTALL_ARGS)
 
 uninstall:
 	scripts/uninstall.sh $(UNINSTALL_ARGS)

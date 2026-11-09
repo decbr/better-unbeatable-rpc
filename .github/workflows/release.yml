@@ -1,6 +1,6 @@
 # tests every push to main and every PR, on Linux and Windows.
 # on a version tag it also builds the Linux tarball and the Windows zip,
-# and publishes a GitHub release:
+# and creates a draft GitHub release (add screenshots, then publish it by hand):
 #
 #   scripts/bump-version.sh 0.2.0   # sets the version, builds plugin/dist/, commits, tags v0.2.0
 #   git push --follow-tags
@@ -133,4 +133,4 @@ jobs:
             fi
           } > notes.md
           gh release create "$GITHUB_REF_NAME" "$tarball" "$zip" \
-            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag
+            --title "$GITHUB_REF_NAME" --notes-file notes.md --verify-tag --draft

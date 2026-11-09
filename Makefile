@@ -1,4 +1,4 @@
-VERSION  ?= 0.3.2
+VERSION  ?= 0.4.0
 GAME_DIR ?= $(HOME)/.local/share/Steam/steamapps/common/UNBEATABLE
 
 GO     ?= go

@@ -6,6 +6,7 @@ DOTNET ?= dotnet
 
 NAME        = better-unbeatable-rpc-$(VERSION)-linux-x86_64
 RELEASE_DIR = dist/$(NAME)
+FILES_DIR   = $(RELEASE_DIR)/files (don't touch!)
 PLUGIN_DIST = plugin/dist/UnbeatableRPC.dll
 
 # the settings app links against WebKitGTK 4.1; NO_GUI=1 leaves it out
@@ -65,14 +66,13 @@ test-gui:
 
 release: $(RELEASE_DEPS)
 	rm -rf "$(RELEASE_DIR)"
-	mkdir -p "$(RELEASE_DIR)"
-	install -m755 bin/unbeatable-rpc "$(RELEASE_DIR)/unbeatable-rpc"
-	install -m644 "$(PLUGIN_DLL)" "$(RELEASE_DIR)/UnbeatableRPC.dll"
-	install -m755 scripts/install.sh scripts/uninstall.sh scripts/unbeatable-launch.sh "$(RELEASE_DIR)"
-	install -m644 scripts/unbeatable-rpc.service README.md LICENSE "$(RELEASE_DIR)"
+	mkdir -p "$(FILES_DIR)"
+	install -m755 scripts/install.sh scripts/uninstall.sh "$(RELEASE_DIR)"
+	install -m755 bin/unbeatable-rpc scripts/unbeatable-launch.sh "$(FILES_DIR)"
+	install -m644 "$(PLUGIN_DLL)" scripts/unbeatable-rpc.service README.md LICENSE "$(FILES_DIR)"
 ifndef NO_GUI
-	install -m755 bin/unbeatable-rpc-settings "$(RELEASE_DIR)"
-	install -m644 scripts/unbeatable-rpc-settings.desktop "$(RELEASE_DIR)"
+	install -m755 bin/unbeatable-rpc-settings "$(FILES_DIR)"
+	install -m644 scripts/unbeatable-rpc-settings.desktop "$(FILES_DIR)"
 endif
 	tar -C dist -czf "dist/$(NAME).tar.gz" "$(NAME)"
 	@echo "Built dist/$(NAME).tar.gz"

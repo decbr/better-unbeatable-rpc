@@ -12,7 +12,10 @@ readonly PLUGIN_CONFIG=xyz.diaduck.unbeatable-rpc.cfg
 # a copy of this script is installed under this name, and uninstalls when run as it
 readonly UNINSTALLER=unbeatable-rpc-uninstall
 
-here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+self="$(realpath "${BASH_SOURCE[0]}")"
+here="$(dirname "$self")"
+# the release keeps everything but install.sh and uninstall.sh in here, like the windows one
+[[ -d "$here/files (don't touch!)" ]] && here="$here/files (don't touch!)"
 bin_dir="$HOME/.local/bin"
 unit_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 apps_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
@@ -232,7 +235,7 @@ install_plugin_and_daemon() {
     install -Dm644 "$here/UnbeatableRPC.dll" "$game_dir/BepInEx/plugins/UnbeatableRPC/UnbeatableRPC.dll"
     install -Dm755 "$here/unbeatable-rpc" "$bin_dir/unbeatable-rpc"
     install -Dm755 "$here/unbeatable-launch.sh" "$bin_dir/unbeatable-launch.sh"
-    install -Dm755 "$here/install.sh" "$bin_dir/$UNINSTALLER"
+    install -Dm755 "$self" "$bin_dir/$UNINSTALLER"
     say "Installed the plugin into the game's BepInEx/plugins/ and the daemon into $bin_dir."
 
     install_settings_app
@@ -344,7 +347,7 @@ print_launch_options() {
 
 do_install() {
     [[ -f "$here/unbeatable-rpc" && -f "$here/UnbeatableRPC.dll" ]] ||
-        die "unbeatable-rpc and UnbeatableRPC.dll must be next to install.sh (run it from the release folder)"
+        die "unbeatable-rpc and UnbeatableRPC.dll must be in \"files (don't touch!)\" next to install.sh (run it from the release folder)"
     load_state
     locate_game
     [[ -f "$game_dir/UNBEATABLE_Data/Managed/Assembly-CSharp.dll" ]] ||
